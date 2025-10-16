@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { X, Music, Clock, Heart, Share2, ExternalLink, Mic, TrendingUp, Radio } from 'lucide-react'
+import { X, Music, Clock, Heart, Share2, ExternalLink, Mic, TrendingUp, Radio, Download } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -102,6 +102,25 @@ export default function SongFloatingCard({
     return `${minutes}:${seconds.toString().padStart(2, '0')}`
   }
 
+  const downloadPreview = async () => {
+    if (!song.preview) return
+    
+    try {
+      const response = await fetch(song.preview)
+      const blob = await response.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `${song.title} - ${song.artist}.mp3`
+      document.body.appendChild(a)
+      a.click()
+      window.URL.revokeObjectURL(url)
+      document.body.removeChild(a)
+    } catch (error) {
+      console.error('Error downloading preview:', error)
+    }
+  }
+
   const getAudioFeatureColor = (value: number, type: string) => {
     const intensity = Math.round(value * 100)
     switch (type) {
@@ -185,6 +204,16 @@ export default function SongFloatingCard({
             >
               <Music className="w-4 h-4 mr-2" />
               Play Preview
+            </Button>
+            
+            <Button
+              onClick={downloadPreview}
+              variant="outline"
+              className="rounded-full"
+              disabled={!song.preview}
+            >
+              <Download className="w-4 h-4 mr-2" />
+              Download
             </Button>
             
             <Button

@@ -319,8 +319,8 @@ export default function Harshify() {
           
           {/* Greeting */}
           <div className="text-center mb-6">
-            <h2 className="text-3xl font-semibold text-[#3B3B3B] mb-2">
-              {greeting}, Harshita ☀️
+            <h2 className="text-3xl font-semibold bg-gradient-to-r from-[#FFB6C1] to-[#FFD580] bg-clip-text text-transparent mb-2" style={{ fontFamily: 'cursive' }}>
+              {greeting}, Dear Listener 🎵
             </h2>
             <p className="text-[#3B3B3B] opacity-80">Ready to brighten your day with music?</p>
             <div className="text-xs text-[#3B3B3B] opacity-60 mt-2">
