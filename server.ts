@@ -1,58 +1,152 @@
-// server.ts - Next.js Standalone + Socket.IO
-import { setupSocket } from '@/lib/socket';
+// server.ts - Express + Socket.IO (Standalone)
+import express from 'express';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
-import next from 'next';
+import cors from 'cors';
+import { setupSocket } from './src/lib/socket';
+import { spawn } from 'child_process';
 
-const dev = process.env.NODE_ENV !== 'production';
-const currentPort = 3000;
+const app = express();
+const server = createServer(app);
+const io = new Server(server, {
+  path: '/api/socketio',
+  cors: {
+    origin: "*",
+    methods: ["GET", "POST"]
+  }
+});
+
+const currentPort = 3001; // Use 3001 for API, Vite will proxy to it
 const hostname = '127.0.0.1';
 
-// Custom server with Socket.IO integration
-async function createCustomServer() {
-  try {
-    // Create Next.js app
-    const nextApp = next({ 
-      dev,
-      dir: process.cwd(),
-      // In production, use the current directory where .next is located
-      conf: dev ? undefined : { distDir: './.next' }
+app.use(cors());
+app.use(express.json());
+
+// --- Helper for Python Bridge ---
+const runPythonBridge = (command: string, args: string[]): Promise<any> => {
+  return new Promise((resolve, reject) => {
+    const python = spawn('python', ['yt_bridge.py', command, ...args]);
+    let data = '';
+    let error = '';
+
+    python.stdout.on('data', (chunk) => {
+      data += chunk.toString();
     });
 
-    await nextApp.prepare();
-    const handle = nextApp.getRequestHandler();
+    python.stderr.on('data', (chunk) => {
+      error += chunk.toString();
+    });
 
-    // Create HTTP server that will handle both Next.js and Socket.IO
-    const server = createServer((req, res) => {
-      // Skip socket.io requests from Next.js handler
-      if (req.url?.startsWith('/api/socketio')) {
+    python.on('close', (code) => {
+      if (code !== 0) {
+        reject(new Error(`Python script failed with code ${code}: ${error}`));
         return;
       }
-      handle(req, res);
-    });
-
-    // Setup Socket.IO
-    const io = new Server(server, {
-      path: '/api/socketio',
-      cors: {
-        origin: "*",
-        methods: ["GET", "POST"]
+      try {
+        // Some commands return JSON, others plain strings
+        if (data.trim().startsWith('[') || data.trim().startsWith('{')) {
+          resolve(jsonSafeParse(data));
+        } else {
+          resolve(data.trim());
+        }
+      } catch (e) {
+        resolve(data.trim());
       }
     });
+  });
+};
 
-    setupSocket(io);
-
-    // Start the server
-    server.listen(currentPort, hostname, () => {
-      console.log(`> Ready on http://${hostname}:${currentPort}`);
-      console.log(`> Socket.IO server running at ws://${hostname}:${currentPort}/api/socketio`);
-    });
-
-  } catch (err) {
-    console.error('Server startup error:', err);
-    process.exit(1);
+const jsonSafeParse = (str: string) => {
+  try {
+    return JSON.parse(str);
+  } catch (e) {
+    return str;
   }
-}
+};
+
+// --- Ported API Logic ---
+
+const fetchFromiTunes = async (query: string) => {
+  try {
+    const response = await fetch(
+      `https://itunes.apple.com/search?term=${encodeURIComponent(query)}&entity=song&limit=5&media=music`
+    );
+    if (response.ok) {
+      const data = await response.json();
+      return data.results.map((track: any) => ({
+        id: `itunes_${track.trackId}`,
+        title: track.trackName,
+        artist: track.artistName,
+        album: track.collectionName || 'Unknown Album',
+        duration: track.trackTimeMillis ? 
+          `${Math.floor(track.trackTimeMillis / 60000)}:${Math.floor((track.trackTimeMillis % 60000) / 1000).toString().padStart(2, '0')}` : 
+          '0:00',
+        coverUrl: track.artworkUrl100?.replace('100x100', '600x600') || `https://via.placeholder.com/600`,
+        preview: track.previewUrl,
+        isFavorite: false,
+        source: 'itunes'
+      }));
+    }
+    return [];
+  } catch (error) {
+    return [];
+  }
+};
+
+const getPopularSongs = () => [
+  { id: 'popular_husn', title: 'Husn', artist: 'Anuv Jain', album: 'Husn', duration: '3:19', coverUrl: 'https://i.scdn.co/image/ab67616d0000b2734c5c432d73af64860d7d5d2e', preview: 'https://cdns-preview-4.dzcdn.net/stream/c-4e4b1b1c2f0b7a4b5e8c7b8d9e5f5a6-3.mp3', isFavorite: false, source: 'popular' },
+  { id: 'popular_seven', title: 'Seven', artist: 'Jungkook ft. Latto', album: 'Seven', duration: '3:04', coverUrl: 'https://i.scdn.co/image/ab67616d0000b2738c5c432d73af64860d7d5e3f', preview: 'https://cdns-preview-5.dzcdn.net/stream/c-5f5c2c2d3g1c8b5c9d8c8e9f0a6b7c7-4.mp3', isFavorite: false, source: 'popular' }
+];
+
+// --- Routes ---
+
+app.get('/api/songs', async (req, res) => {
+  const query = req.query.search as string;
+  let songs = [];
+
+  if (query && query.trim() !== '') {
+    try {
+      const [itunes, youtube] = await Promise.all([
+        fetchFromiTunes(query),
+        runPythonBridge('search', [query])
+      ]);
+      
+      // Combine results, prioritizing YouTube for "full songs"
+      songs = [...youtube, ...itunes].slice(0, 30);
+    } catch (e) {
+      console.error("Search error:", e);
+      songs = await fetchFromiTunes(query);
+    }
+  } else {
+    songs = getPopularSongs();
+  }
+
+  res.json({ songs });
+});
+
+// Endpoint to get full audio stream URL
+app.get('/api/stream', async (req, res) => {
+  const videoId = req.query.id as string;
+  if (!videoId) return res.status(400).json({ error: "Missing video id" });
+
+  try {
+    const streamUrl = await runPythonBridge('stream', [videoId]);
+    res.json({ url: streamUrl });
+  } catch (e) {
+    console.error("Streaming error:", e);
+    res.status(500).json({ error: "Failed to get stream URL" });
+  }
+});
+
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'ok', server: 'express', python: 'active' });
+});
+
+// Setup Socket.IO
+setupSocket(io);
 
 // Start the server
-createCustomServer();
+server.listen(currentPort, hostname, () => {
+  console.log(`> API Server ready on http://${hostname}:${currentPort}`);
+  console.log(`> YouTube Music Bridge active via Python`);
+});

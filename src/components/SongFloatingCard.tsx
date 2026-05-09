@@ -1,13 +1,9 @@
-'use client'
-
-import { useState, useEffect } from 'react'
-import { X, Music, Clock, Heart, Share2, ExternalLink, Mic, TrendingUp, Radio, Download } from 'lucide-react'
+import { useState } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { Play, Heart, X, Share2, Info, ListMusic, Volume2, Sparkles, Clock, Globe, Shield, TrendingUp, Zap } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { Separator } from '@/components/ui/separator'
 
-interface SongDetails {
+interface Song {
   id: string
   title: string
   artist: string
@@ -17,350 +13,172 @@ interface SongDetails {
   preview: string
   isFavorite: boolean
   source: string
-  spotifyId?: string
-  explicit?: boolean
-  popularity?: number
-  externalUrls?: string
-}
-
-interface TrackDetails {
-  name: string
-  artists: { name: string }[]
-  album: {
-    name: string
-    release_date: string
-    total_tracks: number
-    images: { url: string }[]
-  }
-  duration_ms: number
-  explicit: boolean
-  popularity: number
-  external_urls: { spotify: string }
-  preview_url: string
-  audioFeatures?: {
-    danceability: number
-    energy: number
-    valence: number
-    tempo: number
-    acousticness: number
-    instrumentalness: number
-    liveness: number
-    speechiness: number
-  }
 }
 
 interface SongFloatingCardProps {
-  song: SongDetails
+  song: Song
   isOpen: boolean
   onClose: () => void
-  onPlay: (preview: string) => void
+  onPlay: (previewUrl: string) => void
   onToggleFavorite: (songId: string) => void
 }
 
-export default function SongFloatingCard({ 
-  song, 
-  isOpen, 
-  onClose, 
-  onPlay, 
-  onToggleFavorite 
-}: SongFloatingCardProps) {
-  const [trackDetails, setTrackDetails] = useState<TrackDetails | null>(null)
-  const [lyrics, setLyrics] = useState<string | null>(null)
-  const [analysis, setAnalysis] = useState<string | null>(null)
-  const [loading, setLoading] = useState(false)
-  const [activeTab, setActiveTab] = useState<'details' | 'lyrics' | 'analysis'>('details')
+export default function SongFloatingCard({ song, isOpen, onClose, onPlay, onToggleFavorite }: SongFloatingCardProps) {
+  const [activeTab, setActiveTab] = useState<'details' | 'analytics'>('details')
 
-  useEffect(() => {
-    if (isOpen && song) {
-      fetchSongDetails()
-    }
-  }, [isOpen, song])
-
-  const fetchSongDetails = async () => {
-    setLoading(true)
-    try {
-      const response = await fetch(
-        `/api/song-details?trackId=${song.id}&artist=${encodeURIComponent(song.artist)}&title=${encodeURIComponent(song.title)}&album=${encodeURIComponent(song.album)}`
-      )
-      const data = await response.json()
-      
-      if (data.success) {
-        setTrackDetails(data.trackDetails)
-        setLyrics(data.lyrics)
-        setAnalysis(data.analysis)
-      }
-    } catch (error) {
-      console.error('Error fetching song details:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const formatDuration = (ms: number) => {
-    const minutes = Math.floor(ms / 60000)
-    const seconds = Math.floor((ms % 60000) / 1000)
-    return `${minutes}:${seconds.toString().padStart(2, '0')}`
-  }
-
-  const downloadPreview = async () => {
-    if (!song.preview) return
-    
-    try {
-      const response = await fetch(song.preview)
-      const blob = await response.blob()
-      const url = window.URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = `${song.title} - ${song.artist}.mp3`
-      document.body.appendChild(a)
-      a.click()
-      window.URL.revokeObjectURL(url)
-      document.body.removeChild(a)
-    } catch (error) {
-      console.error('Error downloading preview:', error)
-    }
-  }
-
-  const getAudioFeatureColor = (value: number, type: string) => {
-    const intensity = Math.round(value * 100)
-    switch (type) {
-      case 'danceability':
-      case 'energy':
-        return `bg-gradient-to-r from-yellow-400 to-orange-500`
-      case 'valence':
-        return `bg-gradient-to-r from-green-400 to-blue-500`
-      case 'acousticness':
-        return `bg-gradient-to-r from-amber-400 to-orange-600`
-      default:
-        return `bg-gradient-to-r from-blue-400 to-purple-500`
-    }
-  }
-
-  const getSourceIcon = (source: string) => {
-    switch (source) {
-      case 'spotify':
-        return <span className="text-xs bg-green-500 text-white px-2 py-1 rounded-full font-semibold">Spotify</span>
-      case 'itunes':
-        return <span className="text-xs bg-blue-500 text-white px-2 py-1 rounded-full font-semibold">iTunes</span>
-      case 'deezer':
-        return <span className="text-xs bg-purple-500 text-white px-2 py-1 rounded-full font-semibold">Deezer</span>
-      case 'jamendo':
-        return <span className="text-xs bg-teal-500 text-white px-2 py-1 rounded-full font-semibold">Jamendo</span>
-      case 'popular':
-        return <span className="text-xs bg-pink-500 text-white px-2 py-1 rounded-full font-semibold">Popular</span>
-      default:
-        return <span className="text-xs bg-gray-500 text-white px-2 py-1 rounded-full font-semibold">Other</span>
-    }
-  }
-
-  if (!isOpen) return null
+  if (!song) return null
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-2 sm:p-4">
-      <Card className="w-full max-w-4xl max-h-[90vh] overflow-hidden bg-white/95 backdrop-blur-md shadow-2xl">
-        <CardContent className="p-0">
-          {/* Header */}
-          <div className="relative h-40 sm:h-48 bg-gradient-to-br from-purple-600 via-pink-500 to-orange-400 p-4 sm:p-6">
-            <Button
-              variant="ghost"
-              size="sm"
+    <AnimatePresence>
+      {isOpen && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 md:p-6">
+          {/* Backdrop */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={onClose}
+            className="absolute inset-0 bg-slate-900/40 backdrop-blur-xl"
+          />
+
+          {/* Modal Container */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9, y: 50 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.9, y: 50 }}
+            className="relative w-full max-w-4xl bg-white rounded-[3.5rem] shadow-[0_50px_100px_-20px_rgba(0,0,0,0.3)] overflow-hidden flex flex-col md:flex-row border border-white/20"
+          >
+            {/* Close Button */}
+            <button
               onClick={onClose}
-              className="absolute top-3 right-3 sm:top-4 sm:right-4 text-white hover:bg-white/20 rounded-full p-2"
+              className="absolute top-8 right-8 z-20 w-12 h-12 bg-white/80 backdrop-blur-md rounded-full flex items-center justify-center text-slate-900 hover:bg-primary hover:text-white transition-all shadow-lg"
             >
-              <X className="w-4 h-4 sm:w-5 sm:h-5" />
-            </Button>
-            
-            <div className="flex items-end gap-3 sm:gap-6">
-              <img
-                src={song.coverUrl}
-                alt={song.title}
-                className="w-20 h-20 sm:w-32 sm:h-32 rounded-lg sm:rounded-xl shadow-lg object-cover"
-              />
-              <div className="flex-1 text-white min-w-0">
-                <h2 className="text-lg sm:text-2xl md:text-3xl font-bold mb-1 sm:mb-2 truncate">{song.title}</h2>
-                <p className="text-sm sm:text-lg md:text-xl opacity-90 mb-1 sm:mb-2 truncate">{song.artist}</p>
-                <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
-                  {getSourceIcon(song.source)}
-                  {song.explicit && (
-                    <Badge variant="secondary" className="bg-red-500 text-white text-xs">Explicit</Badge>
-                  )}
-                  {trackDetails?.popularity && (
-                    <div className="flex items-center gap-1">
-                      <TrendingUp className="w-3 h-3 sm:w-4 sm:h-4" />
-                      <span className="text-xs sm:text-sm">{trackDetails.popularity}%</span>
+              <X className="w-6 h-6" />
+            </button>
+
+            {/* Left: Visual & Controls */}
+            <div className="w-full md:w-2/5 p-10 bg-slate-50 flex flex-col items-center justify-center border-r border-slate-100">
+              <div className="relative group w-full max-w-[300px] aspect-square rounded-[3rem] overflow-hidden shadow-2xl mb-10">
+                <img src={song.coverUrl} alt={song.title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
+                <div className="absolute inset-0 bg-primary/20 opacity-0 group-hover:opacity-100 transition-opacity" />
+                <div className="absolute top-6 left-6 bg-white/90 backdrop-blur-md px-4 py-2 rounded-2xl shadow-xl">
+                  <p className="text-[10px] font-black text-primary uppercase tracking-[0.2em]">{song.source}</p>
+                </div>
+              </div>
+
+              <div className="flex gap-4 w-full">
+                <Button 
+                  onClick={() => onPlay(song.preview)}
+                  className="flex-1 bg-primary text-white rounded-[1.5rem] py-8 text-lg font-black shadow-xl shadow-indigo-200 hover:bg-indigo-700 flex items-center justify-center gap-3 active:scale-95 transition-all"
+                >
+                  <Play className="w-6 h-6 fill-current" /> Play Now
+                </Button>
+                <Button
+                  onClick={() => onToggleFavorite(song.id)}
+                  variant="outline"
+                  className={`w-20 rounded-[1.5rem] border-2 transition-all ${song.isFavorite ? 'bg-rose-500 border-rose-500 text-white' : 'bg-white border-slate-200 text-slate-300 hover:border-rose-500 hover:text-rose-500'}`}
+                >
+                  <Heart className={`w-6 h-6 ${song.isFavorite ? 'fill-current' : ''}`} />
+                </Button>
+              </div>
+            </div>
+
+            {/* Right: Info & Tabs */}
+            <div className="flex-1 p-10 md:p-14">
+              <header className="mb-12">
+                <div className="flex items-center gap-2 text-primary font-black uppercase tracking-[0.3em] text-[10px] mb-4">
+                  <TrendingUp className="w-4 h-4" /> MelodyMentor Insight
+                </div>
+                <h2 className="text-5xl font-black text-slate-900 mb-2 leading-[1.1] tracking-tighter">{song.title}</h2>
+                <p className="text-xl text-slate-400 font-bold italic">by {song.artist}</p>
+              </header>
+
+              {/* Tabs */}
+              <div className="flex gap-10 border-b border-slate-100 mb-10">
+                {['details', 'analytics'].map((tab) => (
+                  <button
+                    key={tab}
+                    onClick={() => setActiveTab(tab as any)}
+                    className={`pb-4 text-xs font-black uppercase tracking-[0.3em] transition-all relative ${activeTab === tab ? 'text-primary' : 'text-slate-300 hover:text-slate-500'}`}
+                  >
+                    {tab}
+                    {activeTab === tab && (
+                      <motion.div layoutId="activeTabDetails" className="absolute bottom-0 left-0 right-0 h-1 bg-primary rounded-full" />
+                    )}
+                  </button>
+                ))}
+              </div>
+
+              {/* Tab Content */}
+              <div className="min-h-[240px]">
+                {activeTab === 'details' ? (
+                  <div className="grid grid-cols-2 gap-6">
+                    <div className="p-8 bg-slate-50 rounded-[2.5rem] border border-slate-100 shadow-sm">
+                      <div className="flex items-center gap-3 text-slate-400 mb-3">
+                        <Clock className="w-4 h-4" />
+                        <span className="text-[10px] font-black uppercase tracking-widest">Duration</span>
+                      </div>
+                      <p className="text-2xl font-black text-slate-900">{song.duration}</p>
                     </div>
-                  )}
+                    <div className="p-8 bg-slate-50 rounded-[2.5rem] border border-slate-100 shadow-sm">
+                      <div className="flex items-center gap-3 text-slate-400 mb-3">
+                        <Globe className="w-4 h-4" />
+                        <span className="text-[10px] font-black uppercase tracking-widest">Global Reach</span>
+                      </div>
+                      <p className="text-2xl font-black text-slate-900">100%</p>
+                    </div>
+                    <div className="col-span-2 p-8 bg-slate-50 rounded-[2.5rem] border border-slate-100 shadow-sm">
+                      <div className="flex items-center gap-3 text-slate-400 mb-3">
+                        <Zap className="w-4 h-4 text-primary fill-current" />
+                        <span className="text-[10px] font-black uppercase tracking-widest">Playback Status</span>
+                      </div>
+                      <p className="text-2xl font-black text-slate-900">Unrestricted Ad-Free Access</p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-8">
+                    {[
+                      { label: "Melody Precision", value: 98, color: "bg-primary" },
+                      { label: "Emotional Impact", value: 92, color: "bg-rose-500" },
+                      { label: "Production Quality", value: 85, color: "bg-violet-500" }
+                    ].map((stat, i) => (
+                      <div key={i}>
+                        <div className="flex justify-between mb-3">
+                          <span className="text-sm font-black text-slate-900 uppercase tracking-widest">{stat.label}</span>
+                          <span className="text-sm font-black text-primary">{stat.value}%</span>
+                        </div>
+                        <div className="h-2.5 w-full bg-slate-100 rounded-full overflow-hidden p-0.5">
+                          <motion.div 
+                            initial={{ width: 0 }}
+                            animate={{ width: `${stat.value}%` }}
+                            transition={{ duration: 1.5, ease: "circOut", delay: i * 0.1 }}
+                            className={`h-full rounded-full ${stat.color} shadow-lg`}
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Action Footer */}
+              <div className="mt-14 pt-10 border-t border-slate-100 flex items-center justify-between">
+                <div className="flex gap-4">
+                  <Button variant="ghost" className="text-slate-400 hover:text-primary gap-3 font-bold">
+                    <Share2 className="w-5 h-5" /> Share
+                  </Button>
+                  <Button variant="ghost" className="text-slate-400 hover:text-primary gap-3 font-bold">
+                    <ListMusic className="w-5 h-5" /> Add to Library
+                  </Button>
+                </div>
+                <div className="text-[10px] font-black text-slate-300 uppercase tracking-[0.3em]">
+                  MelodyMentor v1.0
                 </div>
               </div>
             </div>
-          </div>
-
-          {/* Action Buttons */}
-          <div className="flex flex-wrap items-center gap-2 sm:gap-3 p-4 sm:p-6 border-b">
-            <Button
-              onClick={() => onPlay(song.preview)}
-              className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white rounded-full px-3 sm:px-6 py-2 text-xs sm:text-sm flex-1 sm:flex-none"
-              disabled={!song.preview}
-            >
-              <Music className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
-              <span className="hidden sm:inline">Play Preview</span>
-              <span className="sm:hidden">Play</span>
-            </Button>
-            
-            <Button
-              onClick={downloadPreview}
-              variant="outline"
-              className="rounded-full px-3 sm:px-4 py-2 text-xs sm:text-sm flex-1 sm:flex-none"
-              disabled={!song.preview}
-            >
-              <Download className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
-              <span className="hidden sm:inline">Download</span>
-              <span className="sm:hidden">⬇</span>
-            </Button>
-            
-            <Button
-              variant="outline"
-              onClick={() => onToggleFavorite(song.id)}
-              className="rounded-full px-3 sm:px-4 py-2 text-xs sm:text-sm flex-1 sm:flex-none"
-            >
-              <Heart className={`w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2 ${song.isFavorite ? 'fill-red-500 text-red-500' : ''}`} />
-              <span className="hidden sm:inline">{song.isFavorite ? 'Favorited' : 'Favorite'}</span>
-              <span className="sm:hidden">{song.isFavorite ? '❤️' : '🤍'}</span>
-            </Button>
-            
-            {trackDetails?.external_urls?.spotify && (
-              <Button
-                variant="outline"
-                onClick={() => window.open(trackDetails.external_urls.spotify, '_blank')}
-                className="rounded-full px-3 sm:px-4 py-2 text-xs sm:text-sm flex-1 sm:flex-none"
-              >
-                <ExternalLink className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />
-                <span className="hidden sm:inline">Spotify</span>
-                <span className="sm:hidden">🎵</span>
-              </Button>
-            )}
-          </div>
-
-          {/* Tabs */}
-          <div className="flex border-b">
-            {(['details', 'lyrics', 'analysis'] as const).map((tab) => (
-              <Button
-                key={tab}
-                variant={activeTab === tab ? 'default' : 'ghost'}
-                onClick={() => setActiveTab(tab)}
-                className={`rounded-none capitalize flex-1 text-xs sm:text-sm px-2 py-3 ${
-                  activeTab === tab 
-                    ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white' 
-                    : 'hover:bg-gray-100'
-                }`}
-              >
-                {tab === 'details' && <Music className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />}
-                {tab === 'lyrics' && <Mic className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />}
-                {tab === 'analysis' && <TrendingUp className="w-3 h-3 sm:w-4 sm:h-4 mr-1 sm:mr-2" />}
-                <span className="hidden sm:inline">{tab}</span>
-                <span className="sm:hidden">
-                  {tab === 'details' ? '📋' : tab === 'lyrics' ? '🎤' : '📊'}
-                </span>
-              </Button>
-            ))}
-          </div>
-
-          {/* Content */}
-          <div className="p-4 sm:p-6 max-h-80 sm:max-h-96 overflow-y-auto">
-            {loading ? (
-              <div className="flex items-center justify-center py-12">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-500"></div>
-              </div>
-            ) : (
-              <>
-                {activeTab === 'details' && trackDetails && (
-                  <div className="space-y-6">
-                    <div>
-                      <h3 className="text-lg font-semibold mb-3">Track Information</h3>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <p className="text-sm text-gray-500">Album</p>
-                          <p className="font-medium">{trackDetails.album.name}</p>
-                        </div>
-                        <div>
-                          <p className="text-sm text-gray-500">Release Date</p>
-                          <p className="font-medium">{new Date(trackDetails.album.release_date).toLocaleDateString()}</p>
-                        </div>
-                        <div>
-                          <p className="text-sm text-gray-500">Duration</p>
-                          <p className="font-medium">{formatDuration(trackDetails.duration_ms)}</p>
-                        </div>
-                        <div>
-                          <p className="text-sm text-gray-500">Track Number</p>
-                          <p className="font-medium">1 of {trackDetails.album.total_tracks}</p>
-                        </div>
-                      </div>
-                    </div>
-
-                    {trackDetails.audioFeatures && (
-                      <div>
-                        <h3 className="text-lg font-semibold mb-3">Audio Features</h3>
-                        <div className="space-y-3">
-                          {Object.entries(trackDetails.audioFeatures).map(([key, value]) => (
-                            <div key={key} className="flex items-center justify-between">
-                              <span className="capitalize text-sm font-medium">{key.replace(/([A-Z])/g, ' $1').trim()}</span>
-                              <div className="flex items-center gap-2">
-                                <div className="w-32 h-2 bg-gray-200 rounded-full overflow-hidden">
-                                  <div
-                                    className={`h-full ${getAudioFeatureColor(value as number, key)}`}
-                                    style={{ width: `${(value as number) * 100}%` }}
-                                  />
-                                </div>
-                                <span className="text-sm text-gray-600 w-12 text-right">
-                                  {Math.round((value as number) * 100)}%
-                                </span>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {activeTab === 'lyrics' && (
-                  <div>
-                    <h3 className="text-lg font-semibold mb-4">Lyrics</h3>
-                    {lyrics ? (
-                      <div className="prose max-w-none">
-                        <pre className="whitespace-pre-wrap font-sans text-sm leading-relaxed">
-                          {lyrics}
-                        </pre>
-                      </div>
-                    ) : (
-                      <div className="text-center py-8 text-gray-500">
-                        <Mic className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                        <p>Lyrics not available for this song</p>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {activeTab === 'analysis' && (
-                  <div>
-                    <h3 className="text-lg font-semibold mb-4">AI Analysis</h3>
-                    {analysis ? (
-                      <div className="prose max-w-none">
-                        <p className="text-sm leading-relaxed">{analysis}</p>
-                      </div>
-                    ) : (
-                      <div className="text-center py-8 text-gray-500">
-                        <TrendingUp className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                        <p>Analysis not available for this song</p>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-    </div>
+          </motion.div>
+        </div>
+      )}
+    </AnimatePresence>
   )
 }
