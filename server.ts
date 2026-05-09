@@ -59,7 +59,8 @@ const runPythonBridge = (command: string, args: string[]): Promise<any> => {
 
     python.on('close', (code) => {
       if (code !== 0) {
-        reject(new Error(`Python script failed with code ${code}: ${error}`));
+        console.error(`Python script failed: ${error}`);
+        reject(new Error(`Python script failed with code ${code}`));
         return;
       }
       try {
@@ -104,31 +105,28 @@ const fetchFromiTunes = async (query: string): Promise<Song[]> => {
   }
 };
 
-const getPopularSongs = (): Song[] => [
-  { id: 'popular_husn', title: 'Husn', artist: 'Anuv Jain', album: 'Husn', duration: '3:19', coverUrl: 'https://i.scdn.co/image/ab67616d0000b2734c5c432d73af64860d7d5d2e', preview: 'https://cdns-preview-4.dzcdn.net/stream/c-4e4b1b1c2f0b7a4b5e8c7b8d9e5f5a6-3.mp3', isFavorite: false, source: 'popular' },
-  { id: 'popular_seven', title: 'Seven', artist: 'Jungkook ft. Latto', album: 'Seven', duration: '3:04', coverUrl: 'https://i.scdn.co/image/ab67616d0000b2738c5c432d73af64860d7d5e3f', preview: 'https://cdns-preview-5.dzcdn.net/stream/c-5f5c2c2d3g1c8b5c9d8c8e9f0a6b7c7-4.mp3', isFavorite: false, source: 'popular' }
-];
-
 // --- Routes ---
 
 app.get('/api/songs', async (req, res) => {
-  const query = req.query.search as string;
+  const query = (req.query.search as string) || "top charts 2024 global"; // Default to real trending hits
   let songs: Song[] = [];
 
-  if (query && query.trim() !== '') {
-    try {
-      const [itunes, youtube] = await Promise.all([
-        fetchFromiTunes(query),
-        runPythonBridge('search', [query])
-      ]);
-      songs = [...youtube, ...itunes].slice(0, 30);
-    } catch (e) {
-      console.error("Search error:", e);
-      songs = await fetchFromiTunes(query);
-    }
-  } else {
-    songs = getPopularSongs();
+  try {
+    const [itunes, youtube] = await Promise.all([
+      fetchFromiTunes(query),
+      runPythonBridge('search', [query])
+    ]);
+    
+    // Filter out iTunes duplicates if YouTube results exist, prioritizing full-length YouTube tracks
+    const ytIds = new Set(youtube.map((s: Song) => s.title.toLowerCase()));
+    const filteredItunes = itunes.filter((s: Song) => !ytIds.has(s.title.toLowerCase()));
+    
+    songs = [...youtube, ...filteredItunes].slice(0, 50);
+  } catch (e) {
+    console.error("Search error:", e);
+    songs = await fetchFromiTunes(query);
   }
+
   res.json({ songs });
 });
 
