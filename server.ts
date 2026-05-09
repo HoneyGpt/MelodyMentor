@@ -22,6 +22,19 @@ const hostname = '127.0.0.1';
 app.use(cors());
 app.use(express.json());
 
+// --- Types ---
+interface Song {
+  id: string;
+  title: string;
+  artist: string;
+  album: string;
+  duration: string;
+  coverUrl: string;
+  preview: string;
+  isFavorite: boolean;
+  source: string;
+}
+
 // --- Helper for Python Bridge ---
 const runPythonBridge = (command: string, args: string[]): Promise<any> => {
   return new Promise((resolve, reject) => {
@@ -66,7 +79,7 @@ const jsonSafeParse = (str: string) => {
 
 // --- Ported API Logic ---
 
-const fetchFromiTunes = async (query: string) => {
+const fetchFromiTunes = async (query: string): Promise<Song[]> => {
   try {
     const response = await fetch(
       `https://itunes.apple.com/search?term=${encodeURIComponent(query)}&entity=song&limit=5&media=music`
@@ -93,7 +106,7 @@ const fetchFromiTunes = async (query: string) => {
   }
 };
 
-const getPopularSongs = () => [
+const getPopularSongs = (): Song[] => [
   { id: 'popular_husn', title: 'Husn', artist: 'Anuv Jain', album: 'Husn', duration: '3:19', coverUrl: 'https://i.scdn.co/image/ab67616d0000b2734c5c432d73af64860d7d5d2e', preview: 'https://cdns-preview-4.dzcdn.net/stream/c-4e4b1b1c2f0b7a4b5e8c7b8d9e5f5a6-3.mp3', isFavorite: false, source: 'popular' },
   { id: 'popular_seven', title: 'Seven', artist: 'Jungkook ft. Latto', album: 'Seven', duration: '3:04', coverUrl: 'https://i.scdn.co/image/ab67616d0000b2738c5c432d73af64860d7d5e3f', preview: 'https://cdns-preview-5.dzcdn.net/stream/c-5f5c2c2d3g1c8b5c9d8c8e9f0a6b7c7-4.mp3', isFavorite: false, source: 'popular' }
 ];
@@ -102,7 +115,7 @@ const getPopularSongs = () => [
 
 app.get('/api/songs', async (req, res) => {
   const query = req.query.search as string;
-  let songs = [];
+  let songs: Song[] = [];
 
   if (query && query.trim() !== '') {
     try {

@@ -26,6 +26,7 @@ def search_songs(query):
             })
         return songs
     except Exception as e:
+        sys.stderr.write(f"Search error: {str(e)}\n")
         return []
 
 def get_stream_url(video_id):
@@ -34,15 +35,18 @@ def get_stream_url(video_id):
         'quiet': True,
         'no_warnings': True,
         'nocheckcertificate': True,
-        # Don't use custom headers, let yt-dlp handle it
     }
     try:
+        sys.stderr.write(f"Extracting info for: {video_id}\n")
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
             info = ydl.extract_info(f"https://www.youtube.com/watch?v={video_id}", download=False)
             if info and 'url' in info:
+                sys.stderr.write("URL resolved successfully\n")
                 return info['url']
+            sys.stderr.write("URL not found in info\n")
             return ""
     except Exception as e:
+        sys.stderr.write(f"Extraction error: {str(e)}\n")
         return ""
 
 if __name__ == "__main__":
@@ -54,12 +58,11 @@ if __name__ == "__main__":
     if command == "search":
         query = " ".join(sys.argv[2:])
         results = search_songs(query)
-        print(json.dumps(results))
+        sys.stdout.write(json.dumps(results))
     
     elif command == "stream":
         if len(sys.argv) < 3:
             sys.exit(1)
         video_id = sys.argv[2]
         url = get_stream_url(video_id)
-        # Use stdout.write to avoid trailing newlines if possible, though print is usually fine
         sys.stdout.write(url)

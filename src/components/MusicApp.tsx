@@ -143,18 +143,24 @@ export default function MusicApp({ onBackToLanding }: MusicAppProps) {
   const playTrack = (track: Song) => {
     setSelectedSong(track)
     setIsFloatingCardOpen(true)
+    // Play immediately when clicking the card
+    playPreview(track.preview, track)
   }
 
-  const playPreview = async (previewUrl: string) => {
-    if (audioRef.current && selectedSong) {
+  const playPreview = async (previewUrl: string, trackOverride?: Song) => {
+    const trackToPlay = trackOverride || selectedSong
+    if (audioRef.current && trackToPlay) {
       let finalUrl = previewUrl;
-      if (selectedSong.source === 'youtube') {
+
+      if (trackToPlay.source === 'youtube') {
         setResolvingStream(true);
         try {
+          console.log(`Resolving stream for: ${trackToPlay.title} (${previewUrl})`);
           const res = await fetch(`/api/stream?id=${previewUrl}`);
           const data = await res.json();
           if (data.url) {
             finalUrl = data.url;
+            console.log("Stream resolved successfully");
           } else {
             throw new Error("Empty URL returned from server");
           }
@@ -165,13 +171,14 @@ export default function MusicApp({ onBackToLanding }: MusicAppProps) {
         }
         setResolvingStream(false);
       }
+
       audioRef.current.pause()
       audioRef.current.src = finalUrl
-      audioRef.current.load() // Force browser to re-load new source
+      audioRef.current.load()
       
       try {
         await audioRef.current.play()
-        setCurrent(selectedSong)
+        setCurrent(trackToPlay)
         setIsPlaying(true)
       } catch (err) {
         console.error("Playback failed:", err)
@@ -443,7 +450,7 @@ export default function MusicApp({ onBackToLanding }: MusicAppProps) {
         song={selectedSong!}
         isOpen={isFloatingCardOpen && !!selectedSong}
         onClose={() => setIsFloatingCardOpen(false)}
-        onPlay={playPreview}
+        onPlay={(url) => playPreview(url, selectedSong!)}
         onToggleFavorite={toggleFavorite}
       />
     </div>
