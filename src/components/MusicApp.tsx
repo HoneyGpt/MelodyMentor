@@ -425,8 +425,8 @@ export default function MusicApp({ onBackToLanding }: MusicAppProps) {
           {/* Header */}
           <header className="flex flex-col lg:flex-row lg:items-center justify-between gap-10 mb-16">
             <div className="space-y-2">
-              <p className="text-primary font-black uppercase tracking-[0.4em] text-[10px]">{greeting}</p>
-              <h2 className="text-5xl lg:text-7xl font-black text-slate-950 tracking-tighter leading-none">Melody <span className="text-slate-300">Trending</span></h2>
+              <p className="text-primary font-black uppercase tracking-[0.4em] text-[8px] md:text-[10px]">{greeting}</p>
+              <h2 className="text-3xl md:text-5xl lg:text-7xl font-black text-slate-950 tracking-tighter leading-none">Melody <span className="text-slate-300">Trending</span></h2>
             </div>
             
             <div className="relative w-full lg:max-w-xl">
@@ -442,7 +442,7 @@ export default function MusicApp({ onBackToLanding }: MusicAppProps) {
                 />
                 <Button 
                   onClick={searchTracks}
-                  className="bg-primary text-white rounded-[1.5rem] px-8 py-6 font-black uppercase tracking-widest text-xs hover:bg-indigo-700 shadow-lg shadow-primary/20"
+                  className="bg-primary text-white rounded-[1.5rem] px-5 py-4 md:px-8 md:py-6 font-black uppercase tracking-widest text-[10px] md:text-xs hover:bg-indigo-700 shadow-lg shadow-primary/20"
                 >
                   {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Search"}
                 </Button>
@@ -530,7 +530,7 @@ export default function MusicApp({ onBackToLanding }: MusicAppProps) {
                   <div className="bg-indigo-100 p-3 rounded-2xl text-primary">
                     <TrendingUp className="w-6 h-6" />
                   </div>
-                  <h3 className="text-3xl font-black text-slate-950 tracking-tight">
+                  <h3 className="text-xl md:text-3xl font-black text-slate-950 tracking-tight">
                     {currentView === 'favorites' ? 'Library' : 
                      currentView === 'queue' ? 'Play Queue' :
                      currentView === 'playlist' ? (playlists.find(p => p.id === selectedPlaylistId)?.name || 'Playlist') :
@@ -540,11 +540,11 @@ export default function MusicApp({ onBackToLanding }: MusicAppProps) {
               </div>
 
               {loading ? (
-                <div className="grid gap-10 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                <div className="grid gap-6 md:gap-10 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                   {[...Array(8)].map((_, i) => <CardSkeleton key={i} />)}
                 </div>
               ) : (
-                <div className="grid gap-10 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                <div className="grid gap-6 md:gap-10 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                   <AnimatePresence>
                     {(currentView === 'favorites' 
                       ? tracks.filter(t => t.isFavorite) 
@@ -641,19 +641,19 @@ export default function MusicApp({ onBackToLanding }: MusicAppProps) {
         <motion.div 
           initial={{ y: 100 }}
           animate={{ y: 0 }}
-          className="fixed bottom-6 left-6 right-6 md:left-[calc(5rem+1.5rem)] lg:left-[calc(18rem+1.5rem)] z-50 bg-slate-950/95 backdrop-blur-xl p-4 md:p-6 rounded-[2.5rem] shadow-2xl border border-white/10"
+          className="fixed bottom-4 left-4 right-4 md:bottom-6 md:left-[calc(5rem+1.5rem)] lg:left-[calc(18rem+1.5rem)] z-50 bg-slate-950/95 backdrop-blur-xl p-3 md:p-6 rounded-[2rem] md:rounded-[2.5rem] shadow-2xl border border-white/10"
         >
-          <div className="flex items-center gap-6">
-            <div className="flex items-center gap-4 min-w-[200px] max-w-[300px]">
-              <img src={current.coverUrl || DEFAULT_COVER} className="w-14 h-14 rounded-2xl object-cover shadow-lg border border-white/5" alt="" />
+          <div className="flex items-center gap-3 md:gap-6">
+            <div className="flex items-center gap-3 md:gap-4 min-w-0 flex-1 md:flex-initial md:min-w-[200px] md:max-w-[300px]">
+              <img src={current.coverUrl || DEFAULT_COVER} className="w-10 h-10 md:w-14 md:h-14 rounded-xl md:rounded-2xl object-cover shadow-lg border border-white/5" alt="" />
               <div className="min-w-0 flex-1">
-                <h5 className="font-black text-white truncate text-lg tracking-tight leading-none mb-1">{current.title}</h5>
-                <p className="text-slate-500 truncate font-bold text-xs uppercase tracking-[0.2em]">{current.artist}</p>
+                <h5 className="font-black text-white truncate text-sm md:text-lg tracking-tight leading-none mb-1">{current.title}</h5>
+                <p className="text-slate-500 truncate font-bold text-[10px] uppercase tracking-[0.1em]">{current.artist}</p>
               </div>
             </div>
             
-            <div className="flex-1 flex flex-col gap-3 px-4 md:px-10">
-              <div className="flex items-center justify-center gap-4 md:gap-8">
+            <div className="flex-1 flex flex-col gap-1 md:gap-3 px-0 md:px-10">
+              <div className="flex items-center justify-center gap-2 md:gap-8">
                 <Button 
                   onClick={() => setShuffle(!shuffle)} 
                   variant="ghost" 
@@ -667,10 +667,10 @@ export default function MusicApp({ onBackToLanding }: MusicAppProps) {
                 <Button 
                   size="icon" 
                   onClick={togglePlayPause} 
-                  className="bg-white text-slate-950 hover:bg-slate-200 rounded-2xl w-14 h-14 shadow-2xl transition-all active:scale-95"
+                  className="bg-white text-slate-950 hover:bg-slate-200 rounded-xl md:rounded-2xl w-10 h-10 md:w-14 md:h-14 shadow-2xl transition-all active:scale-95 flex-shrink-0"
                   disabled={resolvingStream}
                 >
-                  {resolvingStream ? <Loader2 className="w-6 h-6 animate-spin text-primary" /> : (isPlaying ? <Pause className="w-6 h-6 fill-current" /> : <Play className="w-6 h-6 fill-current ml-1" />)}
+                  {resolvingStream ? <Loader2 className="w-4 h-4 md:w-6 md:h-6 animate-spin text-primary" /> : (isPlaying ? <Pause className="w-4 h-4 md:w-6 md:h-6 fill-current" /> : <Play className="w-4 h-4 md:w-6 md:h-6 fill-current ml-1" />)}
                 </Button>
                 
                 <Button onClick={playNext} variant="ghost" className="text-slate-400 hover:text-white"><SkipForward className="w-6 h-6 fill-current" /></Button>
