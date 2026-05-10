@@ -390,8 +390,16 @@ export default function MusicApp({ onBackToLanding }: MusicAppProps) {
 
               {currentView === 'library' && (
                 <div className="space-y-10 pt-4">
-                  <h3 className="text-3xl font-black tracking-tighter">Your Library</h3>
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-3xl font-black tracking-tighter">Your Collections</h3>
+                    <Button onClick={() => setShowCreateModal(true)} className="bg-primary/10 text-primary hover:bg-primary/20 rounded-full px-6 py-2 text-[10px] font-black uppercase tracking-widest border border-primary/20">New Playlist</Button>
+                  </div>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                    {/* Create New Card (Mobile Friendly) */}
+                    <div onClick={() => setShowCreateModal(true)} className="md:hidden bg-white/5 border-2 border-dashed border-white/10 p-8 rounded-[3rem] flex flex-col items-center justify-center gap-4 text-slate-500 hover:text-white hover:border-primary/40 transition-all">
+                      <Plus className="w-12 h-12" />
+                      <span className="font-black text-xs uppercase tracking-widest">Create Playlist</span>
+                    </div>
                     {playlists.map(p => (
                       <div key={p.id} onClick={() => { setSelectedPlaylistId(p.id); setCurrentView('playlist'); }} className="bg-gradient-to-br from-indigo-600 to-primary p-10 rounded-[3rem] shadow-2xl cursor-pointer hover:scale-105 transition-transform group relative overflow-hidden">
                         <div className="absolute -right-4 -bottom-4 opacity-10 group-hover:scale-125 transition-transform"><Music className="w-32 h-32" /></div>
@@ -478,7 +486,7 @@ export default function MusicApp({ onBackToLanding }: MusicAppProps) {
         {current && (
           <motion.div 
             initial={{ y: 100 }} animate={{ y: 0 }}
-            className="fixed bottom-8 left-6 right-6 lg:left-[calc(18rem+2rem)] lg:right-10 z-50 bg-slate-900/90 backdrop-blur-3xl border border-white/10 rounded-[3rem] p-4 md:p-6 shadow-[0_50px_100px_-20px_rgba(0,0,0,0.6)]"
+            className="fixed bottom-24 md:bottom-8 left-4 right-4 md:left-[calc(18rem+2rem)] md:right-10 z-50 bg-slate-900/90 backdrop-blur-3xl border border-white/10 rounded-[2.5rem] md:rounded-[3rem] p-3 md:p-6 shadow-[0_50px_100px_-20px_rgba(0,0,0,0.6)]"
           >
             <div className="flex items-center gap-4 lg:gap-12">
               <div 
@@ -526,6 +534,26 @@ export default function MusicApp({ onBackToLanding }: MusicAppProps) {
           </motion.div>
         )}
       </main>
+
+      {/* Mobile Bottom Navigation */}
+      <nav className="fixed bottom-0 left-0 right-0 h-20 bg-slate-900/80 backdrop-blur-3xl border-t border-white/5 flex md:hidden items-center justify-around z-[55] px-6 pb-2">
+        <button onClick={() => setCurrentView('home')} className={`flex flex-col items-center gap-1 ${currentView === 'home' ? 'text-primary' : 'text-slate-500'}`}>
+          <Home className={`w-6 h-6 ${currentView === 'home' ? 'fill-current' : ''}`} />
+          <span className="text-[10px] font-black uppercase tracking-widest">Home</span>
+        </button>
+        <button onClick={() => setCurrentView('search')} className={`flex flex-col items-center gap-1 ${currentView === 'search' ? 'text-primary' : 'text-slate-500'}`}>
+          <Search className="w-6 h-6" />
+          <span className="text-[10px] font-black uppercase tracking-widest">Search</span>
+        </button>
+        <button onClick={() => setCurrentView('library')} className={`flex flex-col items-center gap-1 ${currentView === 'library' || currentView === 'playlist' ? 'text-primary' : 'text-slate-500'}`}>
+          <ListMusic className={`w-6 h-6 ${currentView === 'library' || currentView === 'playlist' ? 'fill-current' : ''}`} />
+          <span className="text-[10px] font-black uppercase tracking-widest">Playlists</span>
+        </button>
+        <button onClick={() => setCurrentView('favorites')} className={`flex flex-col items-center gap-1 ${currentView === 'favorites' ? 'text-primary' : 'text-slate-500'}`}>
+          <Heart className={`w-6 h-6 ${currentView === 'favorites' ? 'fill-current' : ''}`} />
+          <span className="text-[10px] font-black uppercase tracking-widest">Loved</span>
+        </button>
+      </nav>
 
       {/* Modals */}
       <SongFloatingCard
