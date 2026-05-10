@@ -638,98 +638,100 @@ export default function MusicApp({ onBackToLanding }: MusicAppProps) {
 
       {/* Premium Player Bar */}
       {current && (
-        <motion.div 
-          initial={{ y: 100 }}
-          animate={{ y: 0 }}
-          className="fixed bottom-[4.5rem] md:bottom-6 left-2 right-2 md:left-[calc(5rem+1.5rem)] lg:left-[calc(18rem+1.5rem)] z-50 bg-slate-900/90 backdrop-blur-xl p-2 md:p-6 rounded-xl md:rounded-[2.5rem] shadow-2xl border border-white/10"
-        >
-          <div className="flex items-center gap-2 md:gap-6">
-            <div className="flex items-center gap-3 md:gap-4 min-w-0 flex-1 md:flex-initial md:min-w-[200px] md:max-w-[300px]">
-              <img src={current.coverUrl || DEFAULT_COVER} className="w-10 h-10 md:w-14 md:h-14 rounded-lg md:rounded-2xl object-cover shadow-lg" alt="" />
-              <div className="min-w-0 flex-1">
-                <h5 className="font-black text-white truncate text-xs md:text-lg tracking-tight leading-none mb-1">{current.title}</h5>
-                <p className="text-slate-500 truncate font-bold text-[9px] md:text-xs uppercase tracking-[0.1em]">{current.artist}</p>
-              </div>
-            </div>
-            
-            <div className="flex md:flex-1 flex-col gap-1 md:gap-3 px-0 md:px-10">
-              <div className="flex items-center justify-end md:justify-center gap-2 md:gap-8">
-                <Button 
-                  onClick={() => setShuffle(!shuffle)} 
-                  variant="ghost" 
-                  size="icon"
-                  className={`hidden md:flex transition-colors ${shuffle ? 'text-primary' : 'text-slate-600 hover:text-white'}`}
-                >
-                  <Shuffle className="w-5 h-5" />
-                </Button>
-                
-                <Button onClick={playPrevious} variant="ghost" size="icon" className="text-slate-500 hover:text-white hidden md:flex"><SkipBack className="w-6 h-6 fill-current" /></Button>
-                
-                <Button 
-                  size="icon" 
-                  onClick={togglePlayPause} 
-                  className="bg-white text-slate-950 hover:bg-slate-200 rounded-full w-9 h-9 md:w-14 md:h-14 shadow-2xl transition-all active:scale-95 flex-shrink-0"
-                  disabled={resolvingStream}
-                >
-                  {resolvingStream ? <Loader2 className="w-4 h-4 md:w-6 md:h-6 animate-spin text-primary" /> : (isPlaying ? <Pause className="w-4 h-4 md:w-6 md:h-6 fill-current" /> : <Play className="w-4 h-4 md:w-6 md:h-6 fill-current ml-1" />)}
-                </Button>
-                
-                <Button onClick={playNext} variant="ghost" size="icon" className="text-slate-500 hover:text-white"><SkipForward className="w-5 h-5 md:w-6 md:h-6 fill-current" /></Button>
-                
-                <Button 
-                  onClick={() => setRepeat(repeat === 'off' ? 'all' : repeat === 'all' ? 'one' : 'off')} 
-                  variant="ghost" 
-                  size="icon"
-                  className={`hidden md:flex transition-colors relative ${repeat !== 'off' ? 'text-primary' : 'text-slate-600 hover:text-white'}`}
-                >
-                  <Repeat className="w-5 h-5" />
-                  {repeat === 'one' && <span className="absolute -top-1 -right-1 bg-primary text-[8px] font-black w-4 h-4 rounded-full flex items-center justify-center text-white border-2 border-slate-950">1</span>}
-                </Button>
-              </div>
-              <div className="hidden md:flex items-center gap-4 px-2">
-                <span className="text-[10px] font-black text-slate-600 tabular-nums w-10 text-right">{formatTime(currentTime)}</span>
-                <div className="flex-1 relative h-1 bg-white/10 rounded-full group overflow-hidden">
-                  <div className="absolute top-0 left-0 h-full bg-primary rounded-full shadow-[0_0_15px_rgba(79,70,229,0.5)] transition-all" style={{ width: `${(currentTime / (duration || 1)) * 100}%` }} />
-                  <input type="range" min="0" max={duration || 100} value={currentTime} onChange={(e) => { if (audioRef.current) audioRef.current.currentTime = parseFloat(e.target.value); }} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+        <>
+          <motion.div 
+            initial={{ y: 100 }}
+            animate={{ y: 0 }}
+            className="fixed bottom-[4.5rem] md:bottom-6 left-2 right-2 md:left-[calc(5rem+1.5rem)] lg:left-[calc(18rem+1.5rem)] z-50 bg-slate-900/90 backdrop-blur-xl p-2 md:p-6 rounded-xl md:rounded-[2.5rem] shadow-2xl border border-white/10"
+          >
+            <div className="flex items-center gap-2 md:gap-6">
+              <div className="flex items-center gap-3 md:gap-4 min-w-0 flex-1 md:flex-initial md:min-w-[200px] md:max-w-[300px]">
+                <img src={current.coverUrl || DEFAULT_COVER} className="w-10 h-10 md:w-14 md:h-14 rounded-lg md:rounded-2xl object-cover shadow-lg" alt="" />
+                <div className="min-w-0 flex-1">
+                  <h5 className="font-black text-white truncate text-xs md:text-lg tracking-tight leading-none mb-1">{current.title}</h5>
+                  <p className="text-slate-500 truncate font-bold text-[9px] md:text-xs uppercase tracking-[0.1em]">{current.artist}</p>
                 </div>
-                <span className="text-[10px] font-black text-slate-600 tabular-nums w-10">{formatTime(duration)}</span>
+              </div>
+              
+              <div className="flex md:flex-1 flex-col gap-1 md:gap-3 px-0 md:px-10">
+                <div className="flex items-center justify-end md:justify-center gap-2 md:gap-8">
+                  <Button 
+                    onClick={() => setShuffle(!shuffle)} 
+                    variant="ghost" 
+                    size="icon"
+                    className={`hidden md:flex transition-colors ${shuffle ? 'text-primary' : 'text-slate-600 hover:text-white'}`}
+                  >
+                    <Shuffle className="w-5 h-5" />
+                  </Button>
+                  
+                  <Button onClick={playPrevious} variant="ghost" size="icon" className="text-slate-500 hover:text-white hidden md:flex"><SkipBack className="w-6 h-6 fill-current" /></Button>
+                  
+                  <Button 
+                    size="icon" 
+                    onClick={togglePlayPause} 
+                    className="bg-white text-slate-950 hover:bg-slate-200 rounded-full w-9 h-9 md:w-14 md:h-14 shadow-2xl transition-all active:scale-95 flex-shrink-0"
+                    disabled={resolvingStream}
+                  >
+                    {resolvingStream ? <Loader2 className="w-4 h-4 md:w-6 md:h-6 animate-spin text-primary" /> : (isPlaying ? <Pause className="w-4 h-4 md:w-6 md:h-6 fill-current" /> : <Play className="w-4 h-4 md:w-6 md:h-6 fill-current ml-1" />)}
+                  </Button>
+                  
+                  <Button onClick={playNext} variant="ghost" size="icon" className="text-slate-500 hover:text-white"><SkipForward className="w-5 h-5 md:w-6 md:h-6 fill-current" /></Button>
+                  
+                  <Button 
+                    onClick={() => setRepeat(repeat === 'off' ? 'all' : repeat === 'all' ? 'one' : 'off')} 
+                    variant="ghost" 
+                    size="icon"
+                    className={`hidden md:flex transition-colors relative ${repeat !== 'off' ? 'text-primary' : 'text-slate-600 hover:text-white'}`}
+                  >
+                    <Repeat className="w-5 h-5" />
+                    {repeat === 'one' && <span className="absolute -top-1 -right-1 bg-primary text-[8px] font-black w-4 h-4 rounded-full flex items-center justify-center text-white border-2 border-slate-950">1</span>}
+                  </Button>
+                </div>
+                <div className="hidden md:flex items-center gap-4 px-2">
+                  <span className="text-[10px] font-black text-slate-600 tabular-nums w-10 text-right">{formatTime(currentTime)}</span>
+                  <div className="flex-1 relative h-1 bg-white/10 rounded-full group overflow-hidden">
+                    <div className="absolute top-0 left-0 h-full bg-primary rounded-full shadow-[0_0_15px_rgba(79,70,229,0.5)] transition-all" style={{ width: `${(currentTime / (duration || 1)) * 100}%` }} />
+                    <input type="range" min="0" max={duration || 100} value={currentTime} onChange={(e) => { if (audioRef.current) audioRef.current.currentTime = parseFloat(e.target.value); }} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+                  </div>
+                  <span className="text-[10px] font-black text-slate-600 tabular-nums w-10">{formatTime(duration)}</span>
+                </div>
+              </div>
+              
+              <div className="hidden lg:flex items-center gap-6 min-w-[100px] justify-end border-l border-white/10 pl-6">
+                <Button 
+                  onClick={() => setCurrentView(currentView === 'queue' ? 'trending' : 'queue')}
+                  variant="ghost" 
+                  className={`flex flex-col items-center gap-1 transition-colors ${currentView === 'queue' ? 'text-primary' : 'text-slate-500 hover:text-white'}`}
+                >
+                  <ListMusic className="w-5 h-5" />
+                  <span className="text-[8px] font-black uppercase tracking-[0.2em]">Queue</span>
+                </Button>
               </div>
             </div>
-            
-            <div className="hidden lg:flex items-center gap-6 min-w-[100px] justify-end border-l border-white/10 pl-6">
-              <Button 
-                onClick={() => setCurrentView(currentView === 'queue' ? 'trending' : 'queue')}
-                variant="ghost" 
-                className={`flex flex-col items-center gap-1 transition-colors ${currentView === 'queue' ? 'text-primary' : 'text-slate-500 hover:text-white'}`}
-              >
-                <ListMusic className="w-5 h-5" />
-                <span className="text-[8px] font-black uppercase tracking-[0.2em]">Queue</span>
-              </Button>
+            {/* Mobile Progress Bar (Mini) */}
+            <div className="md:hidden absolute bottom-0 left-0 right-0 h-[2px] bg-white/10">
+               <div className="h-full bg-white transition-all" style={{ width: `${(currentTime / (duration || 1)) * 100}%` }} />
             </div>
-          </div>
-          {/* Mobile Progress Bar (Mini) */}
-          <div className="md:hidden absolute bottom-0 left-0 right-0 h-[2px] bg-white/10">
-             <div className="h-full bg-white transition-all" style={{ width: `${(currentTime / (duration || 1)) * 100}%` }} />
-          </div>
-        </motion.div>
+          </motion.div>
 
-        {/* Mobile Bottom Navigation */}
-        <nav className="fixed bottom-0 left-0 right-0 h-16 bg-black/95 backdrop-blur-lg border-t border-white/5 flex md:hidden items-center justify-around z-[60] px-4">
-          {[
-            { icon: <Home className="w-6 h-6" />, label: 'Home', active: currentView === 'trending', onClick: () => setCurrentView('trending') },
-            { icon: <Search className="w-6 h-6" />, label: 'Search', active: false, onClick: () => { setCurrentView('trending'); window.scrollTo({ top: 0, behavior: 'smooth' }); } },
-            { icon: <ListMusic className="w-6 h-6" />, label: 'Library', active: currentView === 'favorites' || currentView === 'playlist', onClick: () => setCurrentView('favorites') },
-          ].map((item, i) => (
-            <button 
-              key={i} 
-              onClick={item.onClick}
-              className={`flex flex-col items-center gap-1 transition-colors ${item.active ? 'text-white' : 'text-slate-500'}`}
-            >
-              {item.icon}
-              <span className="text-[10px] font-bold">{item.label}</span>
-            </button>
-          ))}
-        </nav>
+          {/* Mobile Bottom Navigation */}
+          <nav className="fixed bottom-0 left-0 right-0 h-16 bg-black/95 backdrop-blur-lg border-t border-white/5 flex md:hidden items-center justify-around z-[60] px-4">
+            {[
+              { icon: <Home className="w-6 h-6" />, label: 'Home', active: currentView === 'trending', onClick: () => setCurrentView('trending') },
+              { icon: <Search className="w-6 h-6" />, label: 'Search', active: false, onClick: () => { setCurrentView('trending'); window.scrollTo({ top: 0, behavior: 'smooth' }); } },
+              { icon: <ListMusic className="w-6 h-6" />, label: 'Library', active: currentView === 'favorites' || currentView === 'playlist', onClick: () => setCurrentView('favorites') },
+            ].map((item, i) => (
+              <button 
+                key={i} 
+                onClick={item.onClick}
+                className={`flex flex-col items-center gap-1 transition-colors ${item.active ? 'text-white' : 'text-slate-500'}`}
+              >
+                {item.icon}
+                <span className="text-[10px] font-bold">{item.label}</span>
+              </button>
+            ))}
+          </nav>
+        </>
       )}
 
       <audio ref={audioRef} />
