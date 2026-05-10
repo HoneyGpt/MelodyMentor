@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { Search, Play, Heart, Sparkles, Music, Pause, Star, Volume2, ListMusic, Home, LayoutGrid, Settings, LogOut, ChevronRight, Mic2, Loader2, TrendingUp, Bell, PlayCircle, Globe, Zap, SkipForward, SkipBack, Plus, Shuffle, Repeat } from 'lucide-react'
+import { Search, Play, Heart, Sparkles, Music, Pause, Star, Volume2, ListMusic, Home, LayoutGrid, Settings, LogOut, ChevronRight, Mic2, Loader2, TrendingUp, Bell, PlayCircle, Globe, Zap, SkipForward, SkipBack, Plus, Shuffle, Repeat, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import SongFloatingCard from '@/components/SongFloatingCard'
@@ -78,9 +78,9 @@ export default function MusicApp({ onBackToLanding }: MusicAppProps) {
     const savedFavorites = localStorage.getItem('melody-mentor-favorites')
     if (savedFavorites) {
       try {
-        setFavorites(new Set(JSON.parse(savedFavorites) || []))
+        setFavorites(JSON.parse(savedFavorites) || [])
       } catch (e) {
-        setFavorites(new Set())
+        setFavorites([])
       }
     }
 
