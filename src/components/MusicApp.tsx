@@ -645,8 +645,11 @@ export default function MusicApp({ onBackToLanding }: MusicAppProps) {
             className="fixed bottom-[4.5rem] md:bottom-6 left-2 right-2 md:left-[calc(5rem+1.5rem)] lg:left-[calc(18rem+1.5rem)] z-50 bg-slate-900/90 backdrop-blur-xl p-2 md:p-6 rounded-xl md:rounded-[2.5rem] shadow-2xl border border-white/10"
           >
             <div className="flex items-center gap-2 md:gap-6">
-              <div className="flex items-center gap-3 md:gap-4 min-w-0 flex-1 md:flex-initial md:min-w-[200px] md:max-w-[300px]">
-                <img src={current.coverUrl || DEFAULT_COVER} className="w-10 h-10 md:w-14 md:h-14 rounded-lg md:rounded-2xl object-cover shadow-lg" alt="" />
+              <div 
+                onClick={() => { setSelectedSong(current); setIsFloatingCardOpen(true); }}
+                className="flex items-center gap-3 md:gap-4 min-w-0 flex-1 md:flex-initial md:min-w-[200px] md:max-w-[300px] cursor-pointer group"
+              >
+                <img src={current.coverUrl || DEFAULT_COVER} className="w-10 h-10 md:w-14 md:h-14 rounded-lg md:rounded-2xl object-cover shadow-lg group-hover:scale-105 transition-transform" alt="" />
                 <div className="min-w-0 flex-1">
                   <h5 className="font-black text-white truncate text-xs md:text-lg tracking-tight leading-none mb-1">{current.title}</h5>
                   <p className="text-slate-500 truncate font-bold text-[9px] md:text-xs uppercase tracking-[0.1em]">{current.artist}</p>
