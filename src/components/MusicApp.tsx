@@ -694,7 +694,7 @@ export default function MusicApp({ onBackToLanding }: MusicAppProps) {
               </div>
             </div>
             
-            <div className="hidden lg:flex items-center gap-6 min-w-[200px] justify-end border-l border-white/10 pl-6">
+            <div className="hidden lg:flex items-center gap-6 min-w-[100px] justify-end border-l border-white/10 pl-6">
               <Button 
                 onClick={() => setCurrentView(currentView === 'queue' ? 'trending' : 'queue')}
                 variant="ghost" 
@@ -703,13 +703,6 @@ export default function MusicApp({ onBackToLanding }: MusicAppProps) {
                 <ListMusic className="w-5 h-5" />
                 <span className="text-[8px] font-black uppercase tracking-[0.2em]">Queue</span>
               </Button>
-              <div className="text-right">
-                 <p className="text-[10px] font-black text-slate-600 uppercase tracking-widest leading-none mb-1">Source</p>
-                 <div className="flex items-center gap-1.5 justify-end">
-                    <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-                    <span className="text-xs font-bold text-white uppercase tracking-tighter">JioSaavn</span>
-                 </div>
-              </div>
             </div>
           </div>
         </motion.div>
