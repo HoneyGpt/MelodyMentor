@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "server": "nodemon --exec \"npx tsx server.ts\"",
+    "server": "python api/index.py",
     "db:push": "prisma db push",
     "db:generate": "prisma generate"
   },
