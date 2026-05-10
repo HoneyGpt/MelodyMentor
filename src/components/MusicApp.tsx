@@ -315,29 +315,25 @@ export default function MusicApp({ onBackToLanding }: MusicAppProps) {
 
       {/* Main Content */}
       <main className="flex-1 flex flex-col relative overflow-hidden h-full">
-        <header className="flex items-center justify-between p-6 md:px-10 z-30">
+        <header className="flex items-center justify-between p-4 md:p-6 md:px-10 z-30">
           <div className="flex-1 max-w-2xl relative group">
-            <Search className="absolute left-6 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-500 group-focus-within:text-primary transition-colors" />
+            <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-500 group-focus-within:text-primary transition-colors" />
             <input 
               type="text" 
-              placeholder="Search for tracks or artists..."
+              placeholder="Search tracks..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
-              className="w-full bg-white/5 border border-white/5 rounded-[2rem] pl-16 pr-8 py-4 text-sm font-bold outline-none focus:bg-white/10 focus:border-primary/40 transition-all"
+              className="w-full bg-white/5 border border-white/5 rounded-[2rem] pl-12 pr-6 py-3 md:py-4 text-xs md:text-sm font-bold outline-none focus:bg-white/10 focus:border-primary/40 transition-all"
             />
           </div>
-          <div className="flex items-center gap-6 ml-10">
-            <button className="w-12 h-12 bg-white/5 rounded-2xl flex items-center justify-center hover:bg-white/10 transition-colors">
-              <Bell className="w-5 h-5 text-slate-400" />
+          <div className="flex items-center gap-3 md:gap-6 ml-4 md:ml-10">
+            <button className="w-10 h-10 md:w-12 md:h-12 bg-white/5 rounded-2xl flex items-center justify-center hover:bg-white/10 transition-colors">
+              <Bell className="w-4 h-4 md:w-5 md:h-5 text-slate-400" />
             </button>
-            <div className="flex items-center gap-4 pl-6 border-l border-white/5">
-              <div className="text-right hidden md:block">
-                <p className="text-xs font-black">Harsh</p>
-                <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Premium</p>
-              </div>
-              <div className="w-12 h-12 bg-slate-800 rounded-2xl flex items-center justify-center border border-white/5 shadow-xl">
-                <User className="w-6 h-6 text-slate-400" />
+            <div className="flex items-center gap-4 pl-4 md:pl-6 border-l border-white/5">
+              <div className="w-10 h-10 md:w-12 md:h-12 bg-slate-800 rounded-2xl flex items-center justify-center border border-white/5 shadow-xl">
+                <User className="w-5 h-5 md:w-6 md:h-6 text-slate-400" />
               </div>
             </div>
           </div>
@@ -473,25 +469,25 @@ export default function MusicApp({ onBackToLanding }: MusicAppProps) {
               )}
 
               {currentView === 'playlist' && (
-                <div className="space-y-10 pt-4">
-                  <div className="flex items-center gap-8 mb-16">
-                    <div className="w-40 h-40 md:w-56 md:h-56 bg-gradient-to-br from-primary to-indigo-700 rounded-[3.5rem] flex items-center justify-center shadow-2xl">
-                      <Music className="w-20 h-20 md:w-28 md:h-28 text-white" />
+                <div className="space-y-6 md:space-y-10 pt-2">
+                  <div className="flex flex-col md:flex-row items-center md:items-end gap-6 md:gap-8 mb-8 md:mb-16">
+                    <div className="w-32 h-32 md:w-56 md:h-56 bg-gradient-to-br from-primary to-indigo-700 rounded-[2.5rem] md:rounded-[3.5rem] flex items-center justify-center shadow-2xl">
+                      <Music className="w-16 h-16 md:w-28 md:h-28 text-white" />
                     </div>
-                    <div>
-                      <span className="text-primary text-[10px] font-black uppercase tracking-[0.4em] mb-4 block">Personal Playlist</span>
-                      <h2 className="text-4xl md:text-7xl font-black tracking-tighter leading-none mb-8">{playlists.find(p => p.id === selectedPlaylistId)?.name}</h2>
-                      <div className="flex items-center gap-4">
+                    <div className="text-center md:text-left">
+                      <span className="text-primary text-[10px] font-black uppercase tracking-[0.4em] mb-2 md:mb-4 block">Personal Playlist</span>
+                      <h2 className="text-3xl md:text-7xl font-black tracking-tighter leading-none mb-6 md:mb-8">{playlists.find(p => p.id === selectedPlaylistId)?.name}</h2>
+                      <div className="flex items-center gap-3 md:gap-4 justify-center md:justify-start">
                         <Button 
                           onClick={() => {
                             const p = playlists.find(p => p.id === selectedPlaylistId);
                             if (p && p.songs.length > 0) playCollection(p.songs);
                           }} 
-                          className="bg-white text-black hover:bg-primary hover:text-white rounded-full px-8 py-5 font-black uppercase tracking-widest text-xs flex items-center gap-2 transition-all"
+                          className="bg-white text-black hover:bg-primary hover:text-white rounded-full px-6 md:px-8 py-3 md:py-5 font-black uppercase tracking-widest text-[10px] md:text-xs flex items-center gap-2 transition-all shadow-xl"
                         >
-                          <Play className="w-4 h-4 fill-current" /> Play All
+                          <Play className="w-3.5 h-3.5 fill-current" /> Play All
                         </Button>
-                        <Button onClick={() => setShowAddSongSearch(true)} variant="outline" className="border-2 border-white/5 text-white hover:bg-white/5 rounded-full px-8 py-5 font-black uppercase tracking-widest text-xs">Add Tracks</Button>
+                        <Button onClick={() => setShowAddSongSearch(true)} variant="outline" className="border-2 border-white/5 text-white hover:bg-white/5 rounded-full px-6 md:px-8 py-3 md:py-5 font-black uppercase tracking-widest text-[10px] md:text-xs">Add Tracks</Button>
                       </div>
                     </div>
                   </div>
