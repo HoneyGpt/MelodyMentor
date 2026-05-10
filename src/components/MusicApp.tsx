@@ -48,13 +48,18 @@ const CardSkeleton = () => (
 
 export default function MusicApp({ onBackToLanding }: MusicAppProps) {
   const [tracks, setTracks] = useState<Song[]>([])
-  const [trendingSongs, setTrendingSongs] = useState<Song[]>([])
+  const [trendingSongs, setTrendingSongs] = useState<Song[]>([
+    { id: 'jio_1', title: 'Husn', artist: 'Anuv Jain', album: 'Husn', duration: '3:39', coverUrl: 'https://c.saavncdn.com/712/Husn-Hindi-2023-20231201053005-500x500.jpg', preview: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3', isFavorite: false, source: 'jiosaavn' },
+    { id: 'jio_2', title: 'Perfect', artist: 'Ed Sheeran', album: 'Divide', duration: '4:23', coverUrl: 'https://c.saavncdn.com/174/Divide-English-2017-500x500.jpg', preview: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3', isFavorite: false, source: 'jiosaavn' },
+    { id: 'jio_3', title: 'Blinding Lights', artist: 'The Weeknd', album: 'After Hours', duration: '3:20', coverUrl: 'https://c.saavncdn.com/743/After-Hours-English-2020-20200320000000-500x500.jpg', preview: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3', isFavorite: false, source: 'jiosaavn' },
+    { id: 'jio_4', title: 'Tu Hai Kahan', artist: 'Aur', album: 'Tu Hai Kahan', duration: '4:15', coverUrl: 'https://c.saavncdn.com/244/Tu-Hai-Kahan-Hindi-2023-20231020053005-500x500.jpg', preview: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-4.mp3', isFavorite: false, source: 'jiosaavn' }
+  ])
   const [topCharts, setTopCharts] = useState<Chart[]>([])
   const [search, setSearch] = useState("")
   const [current, setCurrent] = useState<Song | null>(null)
   const [loading, setLoading] = useState(false)
   const [greeting, setGreeting] = useState('')
-  const [favorites, setFavorites] = useState<Set<string>>(new Set())
+  const [favorites, setFavorites] = useState<Song[]>([])
   const [isPlaying, setIsPlaying] = useState(false)
   const [shuffle, setShuffle] = useState(false)
   const [repeat, setRepeat] = useState<'off' | 'one' | 'all'>('off')
@@ -97,7 +102,7 @@ export default function MusicApp({ onBackToLanding }: MusicAppProps) {
   }, [])
 
   useEffect(() => {
-    localStorage.setItem('melody-mentor-favorites', JSON.stringify(Array.from(favorites)))
+    localStorage.setItem('melody-mentor-favorites', JSON.stringify(favorites))
   }, [favorites])
 
   useEffect(() => {
@@ -136,7 +141,7 @@ export default function MusicApp({ onBackToLanding }: MusicAppProps) {
       
       const trendingWithFavorites = (data.trending || []).map((track: Song) => ({
         ...track,
-        isFavorite: favorites.has(track.id)
+        isFavorite: favorites.some(f => f.id === track.id)
       }))
       
       setTrendingSongs(trendingWithFavorites)
@@ -156,9 +161,9 @@ export default function MusicApp({ onBackToLanding }: MusicAppProps) {
     try {
       const res = await fetch(`/api/playlist?id=${chartId}`)
       const data = await res.json()
-      const tracksWithFavorites = data.songs.map((track: Song) => ({
+      const tracksWithFavorites = (data.songs || []).map((track: Song) => ({
         ...track,
-        isFavorite: favorites.has(track.id)
+        isFavorite: favorites.some(f => f.id === track.id)
       }))
       setTracks(tracksWithFavorites)
       setCurrentView('trending')
@@ -182,12 +187,14 @@ export default function MusicApp({ onBackToLanding }: MusicAppProps) {
     try {
       const res = await fetch(`/api/songs?search=${encodeURIComponent(search.trim())}`)
       const data = await res.json()
-      const tracksWithFavorites = data.songs.map((track: Song) => ({
+      // The API returns an array directly or {songs: []}
+      const rawSongs = Array.isArray(data) ? data : (data.songs || [])
+      const tracksWithFavorites = rawSongs.map((track: Song) => ({
         ...track,
-        isFavorite: favorites.has(track.id)
+        isFavorite: favorites.some(f => f.id === track.id)
       }))
       setTracks(tracksWithFavorites)
-      setCurrentView('trending') // Switch to main grid to show search results
+      setCurrentView('trending')
     } catch (err) {
       console.error(err)
     } finally {
@@ -196,28 +203,59 @@ export default function MusicApp({ onBackToLanding }: MusicAppProps) {
   }
 
   const toggleFavorite = (songId: string) => {
-    const newFavorites = new Set(favorites)
-    if (newFavorites.has(songId)) {
-      newFavorites.delete(songId)
+    const songToToggle = [...tracks, ...trendingSongs, ...queue].find(s => s.id === songId);
+    if (!songToToggle) return;
+
+    if (favorites.some(f => f.id === songId)) {
+      setFavorites(favorites.filter(f => f.id !== songId));
     } else {
-      newFavorites.add(songId)
+      setFavorites([...favorites, { ...songToToggle, isFavorite: true }]);
     }
-    setFavorites(newFavorites)
-    setTracks(tracks.map(track => 
-      track.id === songId ? { ...track, isFavorite: !track.isFavorite } : track
-    ))
   }
 
+  const [showCreateModal, setShowCreateModal] = useState(false)
+  const [newPlaylistName, setNewPlaylistName] = useState('')
+  const [showAddSongSearch, setShowAddSongSearch] = useState(false)
+  const [playlistSearchQuery, setPlaylistSearchQuery] = useState('')
+  const [playlistSearchResults, setPlaylistSearchResults] = useState<Song[]>([])
+  const [searchingInPlaylist, setSearchingInPlaylist] = useState(false)
+
   const createPlaylist = () => {
-    const name = prompt("Enter playlist name:")
-    if (name) {
-      const newPlaylist: Playlist = {
-        id: Math.random().toString(36).substr(2, 9),
-        name,
-        songs: []
-      }
-      setPlaylists([...playlists, newPlaylist])
+    if (!newPlaylistName.trim()) return;
+    const newPlaylist = { id: Date.now().toString(), name: newPlaylistName, songs: [] };
+    const updated = [...playlists, newPlaylist];
+    setPlaylists(updated);
+    localStorage.setItem('melody-mentor-playlists', JSON.stringify(updated));
+    setNewPlaylistName('');
+    setShowCreateModal(false);
+    setSelectedPlaylistId(newPlaylist.id);
+    setCurrentView('playlist');
+  }
+
+  const handlePlaylistSearch = async () => {
+    if (!playlistSearchQuery.trim()) return;
+    setSearchingInPlaylist(true);
+    try {
+      const res = await fetch(`/api/songs?search=${encodeURIComponent(playlistSearchQuery)}`);
+      const data = await res.json();
+      setPlaylistSearchResults(data.map((t: any) => ({ ...t, isFavorite: favorites.some(f => f.id === t.id) })));
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setSearchingInPlaylist(false);
     }
+  }
+
+  const addSongToPlaylistById = (playlistId: string, song: Song) => {
+    const updatedPlaylists = playlists.map(p => {
+      if (p.id === playlistId) {
+        if (p.songs.some(s => s.id === song.id)) return p;
+        return { ...p, songs: [...p.songs, song] };
+      }
+      return p;
+    });
+    setPlaylists(updatedPlaylists);
+    localStorage.setItem('melody-mentor-playlists', JSON.stringify(updatedPlaylists));
   }
 
   const addToPlaylist = (playlistId: string, song: Song) => {
@@ -388,9 +426,6 @@ export default function MusicApp({ onBackToLanding }: MusicAppProps) {
           <div className="pt-8 pb-4">
              <div className="flex items-center justify-between px-4 mb-4">
                 <span className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] hidden lg:block">Playlists</span>
-                <button onClick={createPlaylist} className="text-slate-500 hover:text-primary transition-colors">
-                  <Plus className="w-4 h-4" />
-                </button>
              </div>
              <div className="space-y-2">
                 {playlists.map(playlist => (
@@ -410,13 +445,23 @@ export default function MusicApp({ onBackToLanding }: MusicAppProps) {
           </div>
         </nav>
 
-        <button 
-          onClick={onBackToLanding}
-          className="w-full flex items-center gap-4 p-4 rounded-2xl text-slate-500 hover:text-white hover:bg-white/5 transition-all"
-        >
-          <LogOut className="w-5 h-5" />
-          <span className="hidden lg:block">Exit Landing</span>
-        </button>
+        <div className="mt-auto px-2">
+          <Button 
+            onClick={() => setShowCreateModal(true)}
+            className="w-full bg-white/5 hover:bg-white/10 text-white rounded-xl py-3 border border-white/5 transition-all flex items-center justify-center gap-2 group mb-4"
+          >
+            <Plus className="w-4 h-4 group-hover:rotate-90 transition-transform" />
+            <span className="hidden lg:block font-bold text-xs uppercase tracking-widest">New Playlist</span>
+          </Button>
+
+          <button 
+            onClick={onBackToLanding}
+            className="w-full flex items-center gap-4 p-4 rounded-2xl text-slate-500 hover:text-white hover:bg-white/5 transition-all"
+          >
+            <LogOut className="w-5 h-5" />
+            <span className="hidden lg:block">Exit Landing</span>
+          </button>
+        </div>
       </aside>
 
       {/* Main Content Area */}
@@ -619,22 +664,136 @@ export default function MusicApp({ onBackToLanding }: MusicAppProps) {
             </div>
           )}
 
-          {/* Empty State */}
-          {!loading && currentView === 'favorites' && tracks.filter(t => t.isFavorite).length === 0 && (
-            <div className="text-center py-40 bg-slate-900 rounded-[2.5rem] md:rounded-[4rem] border border-white/5 relative overflow-hidden">
-               <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(79,70,229,0.05),transparent_70%)]" />
+          {/* Empty Playlist State */}
+          {!loading && currentView === 'playlist' && (playlists.find(p => p.id === selectedPlaylistId)?.songs.length === 0) && (
+            <div className="text-center py-24 md:py-40 bg-slate-900/50 rounded-[2rem] md:rounded-[4rem] border border-white/5 relative overflow-hidden backdrop-blur-md">
+               <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(79,70,229,0.1),transparent_70%)]" />
                <div className="relative z-10">
-                 <div className="w-20 h-20 md:w-24 md:h-24 bg-white/5 rounded-full flex items-center justify-center mx-auto mb-8">
+                 <div className="w-16 h-16 md:w-24 md:h-24 bg-white/5 rounded-full flex items-center justify-center mx-auto mb-8 border border-white/10">
+                   <Music className="w-8 h-8 md:w-12 md:h-12 text-slate-700" />
+                 </div>
+                 <h3 className="text-2xl md:text-3xl font-black text-white mb-4 tracking-tight">Your playlist is empty</h3>
+                 <p className="text-slate-500 mb-10 max-w-sm mx-auto font-medium text-base md:text-lg px-6">Start building your perfect vibe by adding some tracks.</p>
+                 <Button 
+                    onClick={() => setShowAddSongSearch(true)} 
+                    className="bg-primary text-white rounded-full px-12 py-7 font-black text-sm uppercase tracking-widest hover:scale-105 transition-transform shadow-2xl shadow-primary/20"
+                 >
+                    Add Songs
+                 </Button>
+               </div>
+            </div>
+          )}
+
+          {!loading && currentView === 'favorites' && tracks.filter(t => t.isFavorite).length === 0 && (
+            <div className="text-center py-24 md:py-40 bg-slate-900/50 rounded-[2rem] md:rounded-[4rem] border border-white/5 relative overflow-hidden backdrop-blur-md">
+               <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(244,63,94,0.1),transparent_70%)]" />
+               <div className="relative z-10">
+                 <div className="w-16 h-16 md:w-24 md:h-24 bg-white/5 rounded-full flex items-center justify-center mx-auto mb-8 border border-white/10">
                    <Heart className="w-8 h-8 md:w-10 md:h-10 text-slate-700" />
                  </div>
-                 <h3 className="text-2xl md:text-3xl font-black text-white mb-4 tracking-tight">Your library is empty.</h3>
-                 <p className="text-slate-500 mb-10 max-w-sm mx-auto font-medium text-base md:text-lg">Add songs to your library to see them here.</p>
-                 <Button onClick={() => {setCurrentView('trending'); loadTrending();}} className="bg-primary text-white rounded-full px-12 py-7 font-black text-sm uppercase tracking-widest hover:scale-105 transition-transform">Explore Trending</Button>
+                 <h3 className="text-2xl md:text-3xl font-black text-white mb-4 tracking-tight">Your library is empty</h3>
+                 <p className="text-slate-500 mb-10 max-w-sm mx-auto font-medium text-base md:text-lg px-6">Add songs to your library to see them here.</p>
+                 <Button onClick={() => {setCurrentView('trending'); loadTrending();}} className="bg-primary text-white rounded-full px-12 py-7 font-black text-sm uppercase tracking-widest hover:scale-105 transition-transform shadow-2xl shadow-primary/20">Explore Trending</Button>
                </div>
             </div>
           )}
         </div>
       </main>
+
+      {/* Create Playlist Modal */}
+      <AnimatePresence>
+        {showCreateModal && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              onClick={() => setShowCreateModal(false)}
+              className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+            />
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }}
+              className="relative bg-slate-900 border border-white/10 p-8 rounded-[2rem] w-full max-w-md shadow-2xl"
+            >
+              <h3 className="text-2xl font-black text-white mb-6 tracking-tight">New Playlist</h3>
+              <input 
+                autoFocus
+                type="text" 
+                placeholder="Name your playlist"
+                value={newPlaylistName}
+                onChange={(e) => setNewPlaylistName(e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && createPlaylist()}
+                className="w-full bg-black/40 border border-white/5 rounded-2xl p-5 text-white outline-none focus:border-primary transition-colors mb-6 font-bold"
+              />
+              <div className="flex gap-4">
+                <Button onClick={() => setShowCreateModal(false)} variant="ghost" className="flex-1 rounded-2xl h-14 text-slate-400 font-bold uppercase tracking-widest text-[10px]">Cancel</Button>
+                <Button onClick={createPlaylist} className="flex-1 bg-primary text-white rounded-2xl h-14 font-black uppercase tracking-widest text-[10px]">Create</Button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Add Song to Playlist Search Modal */}
+      <AnimatePresence>
+        {showAddSongSearch && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              onClick={() => setShowAddSongSearch(false)}
+              className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+            />
+            <motion.div 
+              initial={{ y: 50, opacity: 0 }} animate={{ y: 0, opacity: 1 }} exit={{ y: 50, opacity: 0 }}
+              className="relative bg-slate-900 border border-white/10 p-6 md:p-8 rounded-[2.5rem] w-full max-w-2xl max-h-[80vh] flex flex-col shadow-2xl overflow-hidden"
+            >
+              <div className="flex items-center justify-between mb-8">
+                <h3 className="text-2xl font-black text-white tracking-tight">Add songs</h3>
+                <button onClick={() => setShowAddSongSearch(false)} className="text-slate-500 hover:text-white"><X className="w-6 h-6" /></button>
+              </div>
+
+              <div className="relative mb-8">
+                <div className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-500"><Search className="w-5 h-5" /></div>
+                <input 
+                  autoFocus
+                  type="text" 
+                  placeholder="Search for songs or artists"
+                  value={playlistSearchQuery}
+                  onChange={(e) => setPlaylistSearchQuery(e.target.value)}
+                  onKeyPress={(e) => e.key === 'Enter' && handlePlaylistSearch()}
+                  className="w-full bg-black/40 border border-white/5 rounded-2xl pl-14 pr-5 py-5 text-white outline-none focus:border-primary transition-colors font-bold"
+                />
+              </div>
+
+              <div className="flex-1 overflow-y-auto pr-2 no-scrollbar space-y-3">
+                {searchingInPlaylist ? (
+                  <div className="flex items-center justify-center py-10"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>
+                ) : (
+                  playlistSearchResults.map((song) => (
+                    <div key={song.id} className="flex items-center gap-4 p-3 bg-white/5 rounded-2xl hover:bg-white/10 transition-colors group">
+                      <img src={song.coverUrl || DEFAULT_COVER} className="w-12 h-12 rounded-xl object-cover" alt="" />
+                      <div className="flex-1 min-w-0">
+                        <h4 className="text-sm font-black text-white truncate leading-none mb-1">{song.title}</h4>
+                        <p className="text-[10px] font-bold text-slate-500 truncate uppercase tracking-widest">{song.artist}</p>
+                      </div>
+                      <Button 
+                        onClick={() => {
+                          addSongToPlaylistById(selectedPlaylistId!, song);
+                          setPlaylistSearchResults(prev => prev.filter(s => s.id !== song.id));
+                        }}
+                        className="bg-white text-black hover:bg-primary hover:text-white rounded-xl px-6 py-2 h-10 font-black text-[10px] uppercase tracking-widest transition-all"
+                      >
+                        Add
+                      </Button>
+                    </div>
+                  ))
+                )}
+                {!searchingInPlaylist && playlistSearchResults.length === 0 && playlistSearchQuery && (
+                  <p className="text-center py-10 text-slate-600 font-bold">No songs found. Try a different search.</p>
+                )}
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* Premium Player Bar */}
       {current && (

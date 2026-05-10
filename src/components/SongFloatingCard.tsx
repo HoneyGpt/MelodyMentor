@@ -57,7 +57,7 @@ export default function SongFloatingCard({ song, isOpen, onClose, onPlay, onTogg
             initial={{ opacity: 0, scale: 0.9, y: 50 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 50 }}
-            className="relative w-full max-w-4xl bg-slate-900 rounded-[3rem] md:rounded-[3.5rem] shadow-[0_50px_100px_-20px_rgba(0,0,0,0.5)] overflow-hidden flex flex-col md:flex-row border border-white/5 text-white"
+            className="relative w-full max-w-4xl max-h-[90vh] md:max-h-[85vh] bg-slate-900 rounded-[2rem] md:rounded-[3.5rem] shadow-[0_50px_100px_-20px_rgba(0,0,0,0.5)] overflow-hidden flex flex-col md:flex-row border border-white/5 text-white m-4"
           >
             {/* Close Button */}
              <button
@@ -150,13 +150,13 @@ export default function SongFloatingCard({ song, isOpen, onClose, onPlay, onTogg
             </div>
 
             {/* Right: Details & Info */}
-            <div className="flex-1 p-8 md:p-14 overflow-y-auto no-scrollbar">
-              <header className="mb-10">
+            <div className="flex-1 p-6 md:p-14 overflow-y-auto no-scrollbar bg-slate-900/50 backdrop-blur-sm">
+              <header className="mb-8 md:mb-10">
                 <div className="flex items-center gap-2 text-primary font-black uppercase tracking-[0.3em] text-[10px] mb-4">
                   <TrendingUp className="w-4 h-4" /> MelodyMentor Insight
                 </div>
-                <h2 className="text-4xl md:text-6xl font-black text-white mb-2 leading-[1.1] tracking-tighter">{song.title}</h2>
-                <p className="text-xl md:text-2xl text-slate-500 font-bold">by {song.artist}</p>
+                <h2 className="text-3xl md:text-6xl font-black text-white mb-2 leading-[1.1] tracking-tighter">{song.title}</h2>
+                <p className="text-lg md:text-2xl text-slate-500 font-bold">by {song.artist}</p>
               </header>
 
               {/* Tabs */}
