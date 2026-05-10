@@ -45,8 +45,11 @@ interface Song {
 // --- Helper for Python Bridge ---
 const runPythonBridge = (command: string, args: string[]): Promise<any> => {
   return new Promise((resolve, reject) => {
-    // Try python3 first (standard on Linux/Render), fallback to python
+    // Determine the correct python command for the environment
     const pythonCmd = process.platform === 'win32' ? 'python' : 'python3';
+    
+    console.log(`Executing: ${pythonCmd} yt_bridge.py ${command} ${args.join(' ')}`);
+    
     const python = spawn(pythonCmd, ['yt_bridge.py', command, ...args]);
     
     let data = '';
@@ -60,17 +63,25 @@ const runPythonBridge = (command: string, args: string[]): Promise<any> => {
       error += chunk.toString();
     });
 
+    // Timeout to prevent hanging processes
+    const timeout = setTimeout(() => {
+      python.kill();
+      reject(new Error('Python bridge timed out'));
+    }, 15000);
+
     python.on('close', (code) => {
+      clearTimeout(timeout);
       if (code !== 0) {
-        console.error(`Python script failed (${pythonCmd}): ${error}`);
-        reject(new Error(`Python script failed with code ${code}`));
+        console.error(`Python script error (${pythonCmd}): ${error}`);
+        reject(new Error(`Python script failed with code ${code}: ${error}`));
         return;
       }
       try {
-        if (data.trim().startsWith('[') || data.trim().startsWith('{')) {
-          resolve(JSON.parse(data));
+        const trimmed = data.trim();
+        if (trimmed.startsWith('[') || trimmed.startsWith('{')) {
+          resolve(JSON.parse(trimmed));
         } else {
-          resolve(data.trim());
+          resolve(trimmed);
         }
       } catch (e) {
         resolve(data.trim());
@@ -82,52 +93,81 @@ const runPythonBridge = (command: string, args: string[]): Promise<any> => {
 // --- Routes ---
 
 app.get('/api/songs', async (req, res) => {
-  const query = (req.query.search as string) || "trending hits 2024 global";
+  const query = (req.query.search as string) || "trending hits global 2024";
   
   try {
-    // We are now ONLY using YouTube to guarantee full-length, unlimited songs
     const youtube = await runPythonBridge('search', [query]);
-    res.json({ songs: youtube.slice(0, 50) });
+    res.json({ songs: youtube || [] });
   } catch (e) {
     console.error("Search error:", e);
-    res.status(500).json({ error: "Failed to fetch songs", details: e instanceof Error ? e.message : String(e) });
+    res.status(500).json({ error: "Failed to fetch songs", message: e instanceof Error ? e.message : String(e) });
   }
 });
 
-// Endpoint to stream audio directly through the server (fixes IP mismatch & CORS)
 app.get('/api/stream', async (req, res) => {
   const videoId = req.query.id as string;
   if (!videoId) return res.status(400).json({ error: "Missing video id" });
 
   try {
     const streamUrl = await runPythonBridge('stream', [videoId]);
-    if (!streamUrl) throw new Error("Failed to resolve stream URL");
+    if (!streamUrl || typeof streamUrl !== 'string') {
+        throw new Error("Invalid or empty stream URL resolved");
+    }
 
-    // Proxy the stream to the client
+    console.log(`Streaming from resolved URL: ${streamUrl.substring(0, 50)}...`);
+
     const response = await axios({
       method: 'get',
       url: streamUrl,
       responseType: 'stream',
+      timeout: 10000,
       headers: {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-        'Referer': 'https://www.youtube.com/'
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+        'Accept': '*/*',
+        'Accept-Encoding': 'identity',
+        'Connection': 'keep-alive',
+        'Referer': 'https://www.youtube.com/',
+        'Range': 'bytes=0-'
       }
     });
 
     res.setHeader('Content-Type', 'audio/mpeg');
+    res.setHeader('Accept-Ranges', 'bytes');
     response.data.pipe(res);
   } catch (e) {
     console.error("Streaming error:", e);
-    res.status(500).json({ error: "Failed to stream audio", details: e instanceof Error ? e.message : String(e) });
+    res.status(500).json({ error: "Failed to stream audio", message: e instanceof Error ? e.message : String(e) });
+  }
+});
+
+// Debug endpoint to check environment status
+app.get('/api/debug', async (req, res) => {
+  try {
+    const checkPython = await runPythonBridge('debug', []);
+    res.json({ 
+      status: 'ok', 
+      platform: process.platform, 
+      python: checkPython,
+      env: {
+        NODE_ENV: process.env.NODE_ENV,
+        PORT: process.env.PORT
+      }
+    });
+  } catch (e) {
+    res.status(500).json({ 
+      status: 'error', 
+      message: e instanceof Error ? e.message : String(e),
+      platform: process.platform 
+    });
   }
 });
 
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', server: 'express', python: 'active' });
+  res.json({ status: 'ok', server: 'express' });
 });
 
 setupSocket(io);
 
 server.listen(currentPort, () => {
-  console.log(`> API Server ready on port ${currentPort}`);
+  console.log(`> MelodyMentor API Live on port ${currentPort}`);
 });
