@@ -61,6 +61,10 @@ export default function MusicApp({ onBackToLanding }: MusicAppProps) {
   const [searchingInPlaylist, setSearchingInPlaylist] = useState(false)
   const [volume, setVolume] = useState(1)
   const [isMuted, setIsMuted] = useState(false)
+  const [showQueueSearch, setShowQueueSearch] = useState(false)
+  const [queueSearchQuery, setQueueSearchQuery] = useState('')
+  const [queueSearchResults, setQueueSearchResults] = useState<Song[]>([])
+  const [searchingInQueue, setSearchingInQueue] = useState(false)
   const audioRef = useRef<HTMLAudioElement>(null)
 
   // --- Initialization ---
@@ -194,6 +198,28 @@ export default function MusicApp({ onBackToLanding }: MusicAppProps) {
       setIsMuted(newMute)
       audioRef.current.volume = newMute ? 0 : volume
     }
+  }
+
+  const removeFromQueue = (songId: string) => {
+    setQueue(prev => prev.filter(s => s.id !== songId))
+  }
+
+  const addToQueue = (song: Song) => {
+    if (!queue.find(s => s.id === song.id)) {
+      setQueue(prev => [...prev, song])
+    }
+  }
+
+  const handleQueueSearch = async () => {
+    if (!queueSearchQuery.trim()) return
+    setSearchingInQueue(true)
+    try {
+      const res = await fetch(`/api/songs?search=${encodeURIComponent(queueSearchQuery)}`)
+      const data = await res.json()
+      const raw = Array.isArray(data) ? data : (data.songs || [])
+      setQueueSearchResults(raw)
+    } catch (e) { console.error(e) }
+    finally { setSearchingInQueue(false) }
   }
 
   const playNext = () => {
@@ -394,10 +420,53 @@ export default function MusicApp({ onBackToLanding }: MusicAppProps) {
                         <p className="text-[10px] font-semibold text-white/30 uppercase tracking-[0.1em] mb-0.5">Playing from</p>
                         <p className="text-sm font-semibold text-white">Your queue</p>
                       </div>
-                      <button onClick={(e) => { e.stopPropagation(); setShowPlaylistSelectorModal(true); }} className="px-5 py-2 bg-white text-black rounded-full text-[11px] font-semibold uppercase tracking-normal flex items-center gap-2 hover:scale-105 active:scale-95 transition-colors duration-200">
-                        <Plus className="w-4 h-4" /> Save
-                      </button>
+                      <div className="flex gap-2">
+                        <button 
+                          onClick={() => setShowQueueSearch(!showQueueSearch)}
+                          className="px-4 py-2 bg-white/5 hover:bg-white/10 text-white rounded-full text-[11px] font-semibold uppercase tracking-normal border border-white/10 transition-colors"
+                        >
+                          {showQueueSearch ? 'Close Search' : 'Add to Queue'}
+                        </button>
+                        <button onClick={(e) => { e.stopPropagation(); setShowPlaylistSelectorModal(true); }} className="px-5 py-2 bg-white text-black rounded-full text-[11px] font-semibold uppercase tracking-normal flex items-center gap-2 hover:scale-105 active:scale-95 transition-colors duration-200">
+                          <Plus className="w-4 h-4" /> Save
+                        </button>
+                      </div>
                     </div>
+
+                    {/* Desktop Queue Search Inline */}
+                    <AnimatePresence>
+                      {showQueueSearch && (
+                        <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="px-6 pb-4 overflow-hidden">
+                          <div className="bg-white/5 rounded-xl p-3 border border-white/5">
+                            <div className="flex gap-2 mb-3">
+                              <input 
+                                type="text" placeholder="Search songs to add..." value={queueSearchQuery}
+                                onChange={(e) => setQueueSearchQuery(e.target.value)}
+                                onKeyPress={(e) => e.key === 'Enter' && handleQueueSearch()}
+                                className="flex-1 bg-black/40 border border-white/5 rounded-lg px-4 py-2 text-xs text-white outline-none focus:border-primary"
+                              />
+                              <button onClick={handleQueueSearch} className="bg-primary text-white p-2 rounded-lg"><Search className="w-4 h-4" /></button>
+                            </div>
+                            <div className="max-h-40 overflow-y-auto no-scrollbar space-y-2">
+                              {searchingInQueue ? <Loader2 className="w-5 h-5 animate-spin text-primary mx-auto" /> : (
+                                queueSearchResults.map(s => (
+                                  <div key={s.id} className="flex items-center justify-between p-2 hover:bg-white/5 rounded-lg group">
+                                    <div className="flex items-center gap-3">
+                                      <img src={s.coverUrl || DEFAULT_COVER} className="w-8 h-8 rounded" alt="" />
+                                      <div className="min-w-0">
+                                        <p className="text-[11px] font-semibold truncate">{s.title}</p>
+                                        <p className="text-[9px] text-white/40 truncate">{s.artist}</p>
+                                      </div>
+                                    </div>
+                                    <button onClick={() => addToQueue(s)} className="text-primary hover:bg-primary/20 p-1.5 rounded-full transition-colors"><Plus className="w-4 h-4" /></button>
+                                  </div>
+                                ))
+                              )}
+                            </div>
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
 
                     {/* Filter Chips */}
                     <div className="px-6 pb-4 flex gap-2 overflow-x-auto no-scrollbar">
@@ -427,7 +496,15 @@ export default function MusicApp({ onBackToLanding }: MusicAppProps) {
                             <h5 className={`text-sm font-semibold truncate ${s.id === current?.id ? 'text-primary' : 'text-white'}`}>{s.title}</h5>
                             <p className="text-[10px] font-bold text-white/40 truncate uppercase tracking-normal">{s.artist}</p>
                           </div>
-                          <span className="text-[11px] font-bold text-white/30 tabular-nums">{s.duration}</span>
+                          <div className="flex items-center gap-3">
+                            <span className="text-[11px] font-bold text-white/30 tabular-nums">{s.duration}</span>
+                            <button 
+                              onClick={(e) => { e.stopPropagation(); removeFromQueue(s.id); }}
+                              className="text-white/20 hover:text-rose-500 p-1 rounded-full opacity-0 group-hover:opacity-100 transition-all"
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -505,7 +582,50 @@ export default function MusicApp({ onBackToLanding }: MusicAppProps) {
                     {/* Mobile Queue / Up Next Section (Shrink-0 so it expands the scroll area) */}
                     <div className="px-4 mt-8 shrink-0 pb-10">
                       <div className="bg-[#0a0a0a] rounded-2xl border border-white/5 p-4">
-                        <h3 className="text-[11px] font-semibold text-white/50 uppercase tracking-[0.2em] mb-4 px-2">Up Next</h3>
+                        <div className="flex items-center justify-between mb-4 px-2">
+                          <h3 className="text-[11px] font-semibold text-white/50 uppercase tracking-[0.2em]">Up Next</h3>
+                          <button 
+                            onClick={() => setShowQueueSearch(!showQueueSearch)}
+                            className="text-[10px] font-bold text-primary uppercase bg-primary/10 px-3 py-1 rounded-full"
+                          >
+                            {showQueueSearch ? 'Close' : 'Add Songs'}
+                          </button>
+                        </div>
+
+                        {/* Mobile Queue Search Inline */}
+                        <AnimatePresence>
+                          {showQueueSearch && (
+                            <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="mb-6 overflow-hidden">
+                              <div className="bg-white/5 rounded-xl p-4 border border-white/5">
+                                <div className="flex gap-2 mb-4">
+                                  <input 
+                                    type="text" placeholder="Search to add..." value={queueSearchQuery}
+                                    onChange={(e) => setQueueSearchQuery(e.target.value)}
+                                    onKeyPress={(e) => e.key === 'Enter' && handleQueueSearch()}
+                                    className="flex-1 bg-black/60 border border-white/10 rounded-xl px-4 py-3 text-sm text-white outline-none focus:border-primary"
+                                  />
+                                </div>
+                                <div className="space-y-3 max-h-60 overflow-y-auto no-scrollbar">
+                                  {searchingInQueue ? <Loader2 className="w-6 h-6 animate-spin text-primary mx-auto my-4" /> : (
+                                    queueSearchResults.map(s => (
+                                      <div key={s.id} className="flex items-center justify-between p-2 bg-white/5 rounded-xl">
+                                        <div className="flex items-center gap-3">
+                                          <img src={s.coverUrl || DEFAULT_COVER} className="w-10 h-10 rounded-lg" alt="" />
+                                          <div className="min-w-0">
+                                            <p className="text-sm font-semibold truncate text-white">{s.title}</p>
+                                            <p className="text-[10px] text-white/40 truncate uppercase">{s.artist}</p>
+                                          </div>
+                                        </div>
+                                        <button onClick={() => addToQueue(s)} className="bg-white text-black p-2 rounded-full"><Plus className="w-4 h-4" /></button>
+                                      </div>
+                                    ))
+                                  )}
+                                </div>
+                              </div>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+
                         <div className="space-y-1">
                           {queue.map((s, i) => (
                             <div 
@@ -525,7 +645,15 @@ export default function MusicApp({ onBackToLanding }: MusicAppProps) {
                                 <h5 className={`text-sm font-semibold truncate ${s.id === current?.id ? 'text-primary' : 'text-white'}`}>{s.title}</h5>
                                 <p className="text-[10px] font-bold text-white/40 truncate uppercase tracking-normal">{s.artist}</p>
                               </div>
-                              <span className="text-[11px] font-bold text-white/30 tabular-nums">{s.duration}</span>
+                              <div className="flex items-center gap-3">
+                                <span className="text-[11px] font-bold text-white/30 tabular-nums">{s.duration}</span>
+                                <button 
+                                  onClick={(e) => { e.stopPropagation(); removeFromQueue(s.id); }}
+                                  className="text-white/20 hover:text-rose-500 p-2"
+                                >
+                                  <X className="w-5 h-5" />
+                                </button>
+                              </div>
                             </div>
                           ))}
                         </div>
