@@ -357,76 +357,145 @@ export default function MusicApp({ onBackToLanding }: MusicAppProps) {
           </div>
         </header>
 
-        <div className="flex-1 overflow-y-auto no-scrollbar relative">
+        <div className="flex-1 overflow-y-auto no-scrollbar relative flex flex-col">
           <AnimatePresence mode="wait">
             {isFullScreenPlayerOpen ? (
               <motion.div 
                 key="full-player"
-                initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                className="absolute inset-0 z-50 bg-black flex flex-col md:flex-row p-4 md:p-10 gap-10 overflow-hidden"
+                initial={{ opacity: 0, y: 100 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 100 }}
+                className="absolute inset-0 z-50 bg-black flex flex-col md:flex-row p-4 md:p-10 gap-6 md:gap-10 overflow-y-auto md:overflow-hidden"
               >
-                {/* Left: Large Album Art */}
-                <div className="w-full md:w-[55%] flex flex-col items-center justify-center min-h-0">
-                  <div className="relative w-full max-w-[500px] aspect-square shadow-[0_0_100px_rgba(0,0,0,0.5)]">
-                    <img 
-                      src={current?.coverUrl || DEFAULT_COVER} 
-                      className="w-full h-full rounded-lg object-cover shadow-2xl" 
-                      alt="" 
-                    />
+                {/* Desktop Layout (Side-by-side) */}
+                <div className="hidden md:flex flex-1 w-full h-full gap-10">
+                  {/* Left: Large Album Art */}
+                  <div className="w-[55%] flex flex-col items-center justify-center min-h-0">
+                    <div className="relative w-full max-w-[500px] aspect-square shadow-[0_0_100px_rgba(0,0,0,0.5)]">
+                      <img 
+                        src={current?.coverUrl || DEFAULT_COVER} 
+                        className="w-full h-full rounded-lg object-cover shadow-2xl" 
+                        alt="" 
+                      />
+                    </div>
+                  </div>
+
+                  {/* Right: Queue / Tabs Panel */}
+                  <div className="w-[45%] flex flex-col bg-[#0a0a0a] rounded-xl border border-white/5 overflow-hidden">
+                    <div className="flex items-center px-6 pt-6 gap-8 border-b border-white/5">
+                      {['UP NEXT', 'LYRICS', 'RELATED'].map((tab, i) => (
+                        <button key={tab} className={`text-[11px] font-black tracking-[0.2em] pb-4 transition-all ${i === 0 ? 'text-white border-b-2 border-white' : 'text-white/40 hover:text-white'}`}>
+                          {tab}
+                        </button>
+                      ))}
+                    </div>
+                    
+                    <div className="p-6 flex items-center justify-between">
+                      <div>
+                        <p className="text-[10px] font-black text-white/30 uppercase tracking-[0.1em] mb-0.5">Playing from</p>
+                        <p className="text-sm font-black text-white">Your queue</p>
+                      </div>
+                      <button onClick={(e) => { e.stopPropagation(); setShowPlaylistSelectorModal(true); }} className="px-5 py-2 bg-white text-black rounded-full text-[11px] font-black uppercase tracking-widest flex items-center gap-2 hover:scale-105 active:scale-95 transition-all">
+                        <Plus className="w-4 h-4" /> Save
+                      </button>
+                    </div>
+
+                    {/* Filter Chips */}
+                    <div className="px-6 pb-4 flex gap-2 overflow-x-auto no-scrollbar">
+                      {CATEGORIES.map(cat => (
+                        <button key={cat} className={`px-4 py-1.5 rounded-lg text-[11px] font-black whitespace-nowrap transition-all border ${cat === 'All' ? 'bg-white text-black border-white' : 'bg-white/5 text-white border-white/5 hover:bg-white/10'}`}>
+                          {cat}
+                        </button>
+                      ))}
+                    </div>
+
+                    <div className="flex-1 overflow-y-auto no-scrollbar p-2 space-y-1">
+                      {queue.map((s, i) => (
+                        <div 
+                          key={`${s.id}-${i}`}
+                          onClick={() => playTrack(s)}
+                          className={`flex items-center gap-4 p-3 rounded-lg transition-all cursor-pointer group ${s.id === current?.id ? 'bg-white/10' : 'hover:bg-white/5'}`}
+                        >
+                          <div className="relative w-12 h-12 shrink-0">
+                            <img src={s.coverUrl || DEFAULT_COVER} className="w-full h-full rounded-md object-cover" alt="" />
+                            {s.id === current?.id && isPlaying && (
+                              <div className="absolute inset-0 bg-black/40 flex items-center justify-center rounded-md">
+                                <Volume2 className="w-5 h-5 text-primary fill-current" />
+                              </div>
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h5 className={`text-sm font-black truncate ${s.id === current?.id ? 'text-primary' : 'text-white'}`}>{s.title}</h5>
+                            <p className="text-[10px] font-bold text-white/40 truncate uppercase tracking-widest">{s.artist}</p>
+                          </div>
+                          <span className="text-[11px] font-bold text-white/30 tabular-nums">{s.duration}</span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </div>
 
-                {/* Right: Queue / Tabs Panel */}
-                <div className="w-full md:w-[45%] flex flex-col bg-[#0a0a0a] rounded-xl border border-white/5 overflow-hidden">
-                  <div className="flex items-center px-6 pt-6 gap-8 border-b border-white/5">
-                    {['UP NEXT', 'LYRICS', 'RELATED'].map((tab, i) => (
-                      <button key={tab} className={`text-[11px] font-black tracking-[0.2em] pb-4 transition-all ${i === 0 ? 'text-white border-b-2 border-white' : 'text-white/40 hover:text-white'}`}>
-                        {tab}
-                      </button>
-                    ))}
-                  </div>
-                  
-                  <div className="p-6 flex items-center justify-between">
-                    <div>
-                      <p className="text-[10px] font-black text-white/30 uppercase tracking-[0.1em] mb-0.5">Playing from</p>
-                      <p className="text-sm font-black text-white">Your queue</p>
+                {/* Mobile Layout (Stacked) */}
+                <div className="flex md:hidden flex-col w-full h-full pt-10">
+                  <div className="flex items-center justify-between mb-8">
+                    <button onClick={() => setIsFullScreenPlayerOpen(false)} className="text-white/60"><ChevronDown className="w-8 h-8" /></button>
+                    <div className="flex items-center gap-2 bg-white/10 px-4 py-1.5 rounded-full">
+                      <Headphones className="w-4 h-4 text-white" />
+                      <span className="text-[10px] font-black uppercase tracking-widest text-white">Audio</span>
                     </div>
-                    <button onClick={() => setShowPlaylistSelectorModal(true)} className="px-5 py-2 bg-white text-black rounded-full text-[11px] font-black uppercase tracking-widest flex items-center gap-2 hover:scale-105 active:scale-95 transition-all">
-                      <Plus className="w-4 h-4" /> Save
-                    </button>
+                    <button className="text-white/60"><MoreVertical className="w-6 h-6" /></button>
                   </div>
 
-                  {/* Filter Chips */}
-                  <div className="px-6 pb-4 flex gap-2 overflow-x-auto no-scrollbar">
-                    {CATEGORIES.map(cat => (
-                      <button key={cat} className={`px-4 py-1.5 rounded-lg text-[11px] font-black whitespace-nowrap transition-all border ${cat === 'All' ? 'bg-white text-black border-white' : 'bg-white/5 text-white border-white/5 hover:bg-white/10'}`}>
-                        {cat}
-                      </button>
-                    ))}
+                  <div className="w-full aspect-square mb-10 shadow-2xl rounded-xl overflow-hidden">
+                    <img src={current?.coverUrl || DEFAULT_COVER} className="w-full h-full object-cover" alt="" />
                   </div>
 
-                  <div className="flex-1 overflow-y-auto no-scrollbar p-2 space-y-1">
-                    {queue.map((s, i) => (
-                      <div 
-                        key={`${s.id}-${i}`}
-                        onClick={() => playTrack(s)}
-                        className={`flex items-center gap-4 p-3 rounded-lg transition-all cursor-pointer group ${s.id === current?.id ? 'bg-white/10' : 'hover:bg-white/5'}`}
-                      >
-                        <div className="relative w-12 h-12 shrink-0">
-                          <img src={s.coverUrl || DEFAULT_COVER} className="w-full h-full rounded-md object-cover" alt="" />
-                          {s.id === current?.id && isPlaying && (
-                            <div className="absolute inset-0 bg-black/40 flex items-center justify-center rounded-md">
-                              <Volume2 className="w-5 h-5 text-primary fill-current" />
-                            </div>
-                          )}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <h5 className={`text-sm font-black truncate ${s.id === current?.id ? 'text-primary' : 'text-white'}`}>{s.title}</h5>
-                          <p className="text-[10px] font-bold text-white/40 truncate uppercase tracking-widest">{s.artist}</p>
-                        </div>
-                        <span className="text-[11px] font-bold text-white/30 tabular-nums">{s.duration}</span>
+                  <div className="flex flex-col mb-10">
+                    <div className="flex items-center justify-between mb-2">
+                      <h2 className="text-2xl font-black text-white truncate pr-4">{current?.title}</h2>
+                      <button className="text-white/40 hover:text-white"><ChevronRight className="w-6 h-6" /></button>
+                    </div>
+                    <p className="text-lg font-bold text-white/40">{current?.artist}</p>
+                  </div>
+
+                  {/* Mobile Actions */}
+                  <div className="flex items-center justify-between mb-10 px-2">
+                    <div className="flex items-center gap-6">
+                      <button className="flex flex-col items-center gap-1.5 text-white/40"><ThumbsUp className="w-6 h-6" /><span className="text-[10px] font-black">11K</span></button>
+                      <button className="flex flex-col items-center gap-1.5 text-white/40"><ThumbsDown className="w-6 h-6" /></button>
+                    </div>
+                    <div className="flex items-center gap-6">
+                      <button className="flex flex-col items-center gap-1.5 text-white/40"><ListMusic className="w-6 h-6" /><span className="text-[10px] font-black">Lyrics</span></button>
+                      <button onClick={() => setShowPlaylistSelectorModal(true)} className="flex flex-col items-center gap-1.5 text-white/40"><Save className="w-6 h-6" /><span className="text-[10px] font-black">Save</span></button>
+                    </div>
+                  </div>
+
+                  {/* Mobile Progress & Controls */}
+                  <div className="space-y-6 px-2">
+                    <div className="space-y-2">
+                      <div className="w-full h-1 bg-white/10 rounded-full relative overflow-hidden">
+                        <div className="absolute h-full bg-white transition-all" style={{ width: `${(currentTime/duration)*100}%` }} />
+                        <input type="range" min="0" max={duration} step="1" value={currentTime} onChange={(e) => { if (audioRef.current) audioRef.current.currentTime = Number(e.target.value) }} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
                       </div>
-                    ))}
+                      <div className="flex justify-between text-[10px] font-black text-white/40">
+                        <span>{Math.floor(currentTime/60)}:{String(Math.floor(currentTime%60)).padStart(2,'0')}</span>
+                        <span>{Math.floor(duration/60)}:{String(Math.floor(duration%60)).padStart(2,'0')}</span>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between px-4 pb-10">
+                      <button onClick={(e) => { e.stopPropagation(); setShuffle(!shuffle); }} className={`${shuffle ? 'text-primary' : 'text-white/40'}`}><Shuffle className="w-6 h-6" /></button>
+                      <button onClick={(e) => { e.stopPropagation(); playPrevious(); }} className="text-white"><SkipBack className="w-8 h-8 fill-current" /></button>
+                      <button onClick={(e) => { e.stopPropagation(); togglePlayPause(); }} className="w-20 h-20 bg-white text-black rounded-full flex items-center justify-center shadow-2xl">
+                        {isPlaying ? <Pause className="w-10 h-10 fill-current" /> : <Play className="w-10 h-10 fill-current ml-2" />}
+                      </button>
+                      <button onClick={(e) => { e.stopPropagation(); playNext(); }} className="text-white"><SkipForward className="w-8 h-8 fill-current" /></button>
+                      <button onClick={(e) => { e.stopPropagation(); setRepeat(repeat === 'off' ? 'all' : 'off'); }} className={`${repeat !== 'off' ? 'text-primary' : 'text-white/40'}`}><Repeat className="w-6 h-6" /></button>
+                    </div>
+
+                    {/* Swipe Up Label */}
+                    <div className="flex flex-col items-center gap-2 pt-4 opacity-40">
+                      <div className="w-10 h-1 bg-white rounded-full" />
+                      <span className="text-[10px] font-black uppercase tracking-widest">Your queue</span>
+                    </div>
                   </div>
                 </div>
               </motion.div>
@@ -612,11 +681,11 @@ export default function MusicApp({ onBackToLanding }: MusicAppProps) {
           >
             {/* Left: Controls */}
             <div className="flex items-center gap-4 md:gap-8 w-1/4">
-              <button onClick={playPrevious} className="text-white hover:text-primary transition-colors"><SkipBack className="w-6 h-6 md:w-8 md:h-8 fill-current" /></button>
-              <button onClick={togglePlayPause} className="w-10 h-10 md:w-14 md:h-14 bg-white text-black rounded-full flex items-center justify-center hover:scale-105 active:scale-95 transition-all">
+              <button onClick={(e) => { e.stopPropagation(); playPrevious(); }} className="text-white hover:text-primary transition-colors"><SkipBack className="w-6 h-6 md:w-8 md:h-8 fill-current" /></button>
+              <button onClick={(e) => { e.stopPropagation(); togglePlayPause(); }} className="w-10 h-10 md:w-14 md:h-14 bg-white text-black rounded-full flex items-center justify-center hover:scale-105 active:scale-95 transition-all">
                 {isPlaying ? <Pause className="w-5 h-5 md:w-6 md:h-6 fill-current" /> : <Play className="w-5 h-5 md:w-6 md:h-6 fill-current ml-0.5" />}
               </button>
-              <button onClick={playNext} className="text-white hover:text-primary transition-colors"><SkipForward className="w-6 h-6 md:w-8 md:h-8 fill-current" /></button>
+              <button onClick={(e) => { e.stopPropagation(); playNext(); }} className="text-white hover:text-primary transition-colors"><SkipForward className="w-6 h-6 md:w-8 md:h-8 fill-current" /></button>
               <span className="hidden md:block text-[11px] font-bold text-white/40 tabular-nums">
                 {Math.floor(currentTime/60)}:{String(Math.floor(currentTime%60)).padStart(2,'0')} / {Math.floor(duration/60)}:{String(Math.floor(duration%60)).padStart(2,'0')}
               </span>
@@ -630,8 +699,8 @@ export default function MusicApp({ onBackToLanding }: MusicAppProps) {
                 <p className="text-[10px] font-bold text-white/40 truncate uppercase tracking-[0.1em]">{current.artist}</p>
               </div>
               <div className="flex items-center gap-2">
-                <button className="text-white/40 hover:text-white p-2"><ThumbsDown className="w-4 h-4" /></button>
-                <button className="text-white/40 hover:text-white p-2"><ThumbsUp className="w-4 h-4" /></button>
+                <button onClick={(e) => e.stopPropagation()} className="text-white/40 hover:text-white p-2"><ThumbsDown className="w-4 h-4" /></button>
+                <button onClick={(e) => e.stopPropagation()} className="text-white/40 hover:text-white p-2"><ThumbsUp className="w-4 h-4" /></button>
               </div>
             </div>
 
@@ -644,14 +713,20 @@ export default function MusicApp({ onBackToLanding }: MusicAppProps) {
                   <input type="range" min="0" max="1" step="0.01" value={volume} onChange={(e) => handleVolumeChange(Number(e.target.value))} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
                 </div>
               </div>
-              <button onClick={() => setRepeat(repeat === 'off' ? 'all' : 'off')} className={`transition-colors ${repeat !== 'off' ? 'text-primary' : 'text-white/40 hover:text-white'}`}><Repeat className="w-5 h-5" /></button>
-              <button onClick={() => setShuffle(!shuffle)} className={`transition-colors ${shuffle ? 'text-primary' : 'text-white/40 hover:text-white'}`}><Shuffle className="w-5 h-5" /></button>
-              <button onClick={() => setIsFullScreenPlayerOpen(!isFullScreenPlayerOpen)} className="text-white/40 hover:text-white transition-colors"><ChevronDown className={`w-6 h-6 transition-transform ${isFullScreenPlayerOpen ? 'rotate-180' : ''}`} /></button>
+              <button onClick={(e) => { e.stopPropagation(); setRepeat(repeat === 'off' ? 'all' : 'off'); }} className={`transition-colors ${repeat !== 'off' ? 'text-primary' : 'text-white/40 hover:text-white'}`}><Repeat className="w-5 h-5" /></button>
+              <button onClick={(e) => { e.stopPropagation(); setShuffle(!shuffle); }} className={`transition-colors ${shuffle ? 'text-primary' : 'text-white/40 hover:text-white'}`}><Shuffle className="w-5 h-5" /></button>
+              <button onClick={(e) => { e.stopPropagation(); setIsFullScreenPlayerOpen(!isFullScreenPlayerOpen); }} className="text-white/40 hover:text-white transition-colors"><ChevronDown className={`w-6 h-6 transition-transform ${isFullScreenPlayerOpen ? 'rotate-180' : ''}`} /></button>
             </div>
 
             {/* Progress Bar (Global) */}
-            <div className="absolute top-0 left-0 right-0 h-[2px] bg-white/10">
+            <div className="absolute top-0 left-0 right-0 h-1 md:h-[2px] bg-white/10 overflow-hidden">
               <div className="h-full bg-primary transition-all" style={{ width: `${(currentTime/duration)*100}%` }} />
+              <input 
+                type="range" min="0" max={duration} step="1" value={currentTime} 
+                onChange={(e) => { if (audioRef.current) audioRef.current.currentTime = Number(e.target.value) }}
+                onClick={(e) => e.stopPropagation()}
+                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" 
+              />
             </div>
           </motion.div>
         )}
