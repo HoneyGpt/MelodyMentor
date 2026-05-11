@@ -729,82 +729,99 @@ export default function MusicApp({ onBackToLanding }: MusicAppProps) {
               </button>
             </div>
 
-            {/* Main Visual Content */}
-            <div className="relative z-10 flex-1 flex flex-col justify-center max-w-lg mx-auto w-full">
-              {/* Album Art Section */}
-              <div className="relative w-full aspect-square mb-12">
-                <motion.img 
-                  layoutId={window.innerWidth > 768 ? `player-art-${current.id}` : undefined}
-                  src={current.coverUrl || DEFAULT_COVER} 
-                  className="w-full h-full rounded-[2.5rem] shadow-[0_40px_120px_-20px_rgba(0,0,0,0.8)] object-cover border border-white/5" 
-                  alt="" 
-                />
-              </div>
-
-              {/* Title & Artist Section */}
-              <div className="flex items-center justify-between gap-6 mb-10">
-                <div className="min-w-0">
-                  <h2 className="text-4xl md:text-5xl font-black text-white tracking-tighter leading-tight mb-2 truncate">{current.title}</h2>
-                  <p className="text-xl md:text-2xl font-bold text-white/50 truncate tracking-wide">{current.artist}</p>
-                </div>
-                <button onClick={() => setShowPlaylistSelectorModal(true)} className="w-16 h-16 rounded-full border-2 border-white/10 flex items-center justify-center text-white/80 hover:bg-white/5 hover:border-white/20 transition-all active:scale-90 shrink-0">
-                  <Plus className="w-8 h-8" />
-                </button>
-              </div>
-
-              {/* Progress Control Section */}
-              <div className="mb-12">
-                <div className="h-1.5 w-full bg-white/10 rounded-full relative mb-4 group cursor-pointer overflow-hidden">
-                  <div className="absolute h-full bg-white rounded-full transition-all" style={{ width: `${(currentTime/duration)*100}%` }} />
-                  <input type="range" min="0" max={duration} value={currentTime} onChange={(e) => { if (audioRef.current) audioRef.current.currentTime = Number(e.target.value) }} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
-                </div>
-                <div className="flex justify-between text-xs font-black text-white/30 tabular-nums tracking-[0.2em]">
-                  <span>{Math.floor(currentTime/60)}:{String(Math.floor(currentTime%60)).padStart(2,'0')}</span>
-                  <span>{Math.floor(duration/60)}:{String(Math.floor(duration%60)).padStart(2,'0')}</span>
+            {/* Main Visual Content (Mobile: Col, Desktop: Row) */}
+            <div className="relative z-10 flex-1 flex flex-col md:flex-row items-center justify-center gap-10 md:gap-20 max-w-7xl mx-auto w-full min-h-0">
+              
+              {/* Left Side: Album Art Section (Large on Desktop) */}
+              <div className="w-full md:w-1/2 flex items-center justify-center min-h-0">
+                <div className="relative w-full max-w-[320px] md:max-w-none aspect-square shrink min-h-0">
+                  <motion.img 
+                    layoutId={`player-art-${current.id}`}
+                    src={current.coverUrl || DEFAULT_COVER} 
+                    className="w-full h-full rounded-[2.5rem] md:rounded-[4rem] shadow-[0_40px_150px_-30px_rgba(0,0,0,0.9)] object-cover border border-white/10 mx-auto" 
+                    alt="" 
+                  />
                 </div>
               </div>
 
-              {/* Playback Controls Section */}
-              <div className="flex items-center justify-between gap-4 mb-12">
-                <button onClick={() => setShuffle(!shuffle)} className={`transition-all p-2 ${shuffle ? 'text-primary' : 'text-white/30 hover:text-white/60'}`}>
-                  <Shuffle className="w-8 h-8" />
-                </button>
-                <div className="flex items-center gap-8 md:gap-12">
-                  <button onClick={playPrevious} className="text-white hover:scale-110 transition-transform active:scale-90">
-                    <SkipBack className="w-12 h-12 md:w-14 md:h-14 fill-current" />
-                  </button>
-                  <button onClick={togglePlayPause} className="w-24 h-24 md:w-28 md:h-28 bg-white text-black rounded-full flex items-center justify-center shadow-[0_30px_60px_-15px_rgba(255,255,255,0.2)] hover:scale-105 active:scale-95 transition-all">
-                    {isPlaying ? <Pause className="w-12 h-12 md:w-14 md:h-14 fill-current" /> : <Play className="w-12 h-12 md:w-14 md:h-14 fill-current ml-1" />}
-                  </button>
-                  <button onClick={playNext} className="text-white hover:scale-110 transition-transform active:scale-90">
-                    <SkipForward className="w-12 h-12 md:w-14 md:h-14 fill-current" />
+              {/* Right Side: Details, Controls & Lyrics */}
+              <div className="w-full md:w-1/2 flex flex-col justify-center min-h-0">
+                {/* Title & Artist Row */}
+                <div className="flex items-center justify-between gap-6 mb-6 md:mb-12">
+                  <div className="min-w-0 flex-1">
+                    <h2 className="text-4xl md:text-7xl font-black text-white tracking-tighter leading-tight mb-2 truncate">{current.title}</h2>
+                    <p className="text-xl md:text-3xl font-bold text-white/40 truncate tracking-wide uppercase tracking-[0.1em]">{current.artist}</p>
+                  </div>
+                  <button onClick={() => setShowPlaylistSelectorModal(true)} className="w-16 h-16 md:w-20 md:h-20 rounded-full border-2 border-white/10 flex items-center justify-center text-white/80 hover:bg-white/10 hover:border-white/30 transition-all active:scale-90 shrink-0">
+                    <Plus className="w-8 h-8 md:w-10 md:h-10" />
                   </button>
                 </div>
-                <button className="text-white/30 hover:text-white/60 p-2">
-                  <Mic2 className="w-8 h-8" />
-                </button>
+
+                {/* Progress Control Row */}
+                <div className="mb-8 md:mb-14">
+                  <div className="h-2 w-full bg-white/10 rounded-full relative mb-4 group cursor-pointer overflow-hidden">
+                    <div className="absolute h-full bg-white rounded-full transition-all" style={{ width: `${(currentTime/duration)*100}%` }} />
+                    <input type="range" min="0" max={duration} value={currentTime} onChange={(e) => { if (audioRef.current) audioRef.current.currentTime = Number(e.target.value) }} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+                  </div>
+                  <div className="flex justify-between text-xs md:text-sm font-black text-white/30 tabular-nums tracking-[0.2em]">
+                    <span>{Math.floor(currentTime/60)}:{String(Math.floor(currentTime%60)).padStart(2,'0')}</span>
+                    <span>{Math.floor(duration/60)}:{String(Math.floor(duration%60)).padStart(2,'0')}</span>
+                  </div>
+                </div>
+
+                {/* Playback Controls Row */}
+                <div className="flex items-center justify-between gap-8 mb-10 md:mb-16">
+                  <button onClick={() => setShuffle(!shuffle)} className={`transition-all p-3 ${shuffle ? 'text-primary' : 'text-white/20 hover:text-white/50'}`}>
+                    <Shuffle className="w-8 h-8 md:w-10 md:h-10" />
+                  </button>
+                  <div className="flex items-center gap-10 md:gap-16">
+                    <button onClick={playPrevious} className="text-white hover:scale-110 transition-transform active:scale-90">
+                      <SkipBack className="w-12 h-12 md:w-16 md:h-16 fill-current" />
+                    </button>
+                    <button onClick={togglePlayPause} className="w-24 h-24 md:w-32 md:h-32 bg-white text-black rounded-full flex items-center justify-center shadow-[0_40px_80px_-20px_rgba(255,255,255,0.15)] hover:scale-105 active:scale-95 transition-all">
+                      {isPlaying ? <Pause className="w-12 h-12 md:w-16 md:h-16 fill-current" /> : <Play className="w-12 h-12 md:w-16 md:h-16 fill-current ml-1" />}
+                    </button>
+                    <button onClick={playNext} className="text-white hover:scale-110 transition-transform active:scale-90">
+                      <SkipForward className="w-12 h-12 md:w-16 md:h-16 fill-current" />
+                    </button>
+                  </div>
+                  <button className="text-white/20 hover:text-white/50 p-3">
+                    <Mic2 className="w-8 h-8 md:w-10 md:h-10" />
+                  </button>
+                </div>
+
+                {/* Lyrics Preview Block (Right Side on Desktop) */}
+                <div className="bg-white/5 backdrop-blur-3xl rounded-[3rem] p-8 md:p-12 border border-white/5 shadow-2xl">
+                  <div className="flex items-center justify-between mb-6">
+                    <h4 className="text-[10px] font-black text-white/40 uppercase tracking-[0.5em]">Real-time Lyrics</h4>
+                    <div className="px-4 py-1.5 bg-primary/20 text-primary rounded-full text-[10px] font-black tracking-widest border border-primary/20">PREMIUM AI</div>
+                  </div>
+                  <p className="text-2xl md:text-4xl font-black text-white/50 leading-tight tracking-tight line-clamp-2 md:line-clamp-none italic">
+                    Enjoying the vibe on <span className="text-white not-italic">MelodyMentor</span>...
+                  </p>
+                </div>
               </div>
             </div>
 
             {/* Bottom Brand Bar */}
-            <div className="relative z-10 flex items-center justify-between max-w-lg mx-auto w-full mb-8">
-              <div className="flex items-center gap-3 text-[#4f46e5] font-black uppercase tracking-[0.3em] text-[10px]">
-                <Zap className="w-5 h-5 fill-current" />
+            <div className="relative z-10 flex items-center justify-between max-w-lg mx-auto w-full mb-6 shrink-0">
+              <div className="flex items-center gap-2 text-[#4f46e5] font-black uppercase tracking-[0.3em] text-[9px] md:text-[10px]">
+                <Zap className="w-4 h-4 fill-current" />
                 <span>Mentozy Soundcore</span>
               </div>
-              <div className="flex items-center gap-8">
-                <button className="text-white/30 hover:text-white/60"><LogOut className="w-6 h-6 -rotate-90" /></button>
-                <button onClick={() => { setIsFullScreenPlayerOpen(false); setCurrentView('library'); }} className="text-white/30 hover:text-white/60"><ListMusic className="w-6 h-6" /></button>
+              <div className="flex items-center gap-6">
+                <button className="text-white/30 hover:text-white/60"><LogOut className="w-5 h-5 -rotate-90" /></button>
+                <button onClick={() => { setIsFullScreenPlayerOpen(false); setCurrentView('library'); }} className="text-white/30 hover:text-white/60"><ListMusic className="w-5 h-5" /></button>
               </div>
             </div>
 
             {/* Lyrics Section */}
-            <div className="relative z-10 max-w-lg mx-auto w-full bg-white/5 backdrop-blur-2xl rounded-[3rem] p-10 border border-white/10 shadow-2xl">
-              <div className="flex items-center justify-between mb-8">
-                <h4 className="text-[10px] font-black text-white/50 uppercase tracking-[0.4em]">Lyrics Preview</h4>
-                <div className="px-3 py-1 bg-white/10 rounded-full text-[8px] font-black text-white/60 uppercase tracking-widest">BETA</div>
+            <div className="relative z-10 max-w-lg mx-auto w-full bg-white/5 backdrop-blur-2xl rounded-[2.5rem] md:rounded-[3rem] p-6 md:p-10 border border-white/10 shadow-2xl shrink-0">
+              <div className="flex items-center justify-between mb-4 md:mb-8">
+                <h4 className="text-[9px] md:text-[10px] font-black text-white/50 uppercase tracking-[0.4em]">Lyrics Preview</h4>
+                <div className="px-2 py-0.5 bg-white/10 rounded-full text-[7px] md:text-[8px] font-black text-white/60 uppercase tracking-widest">BETA</div>
               </div>
-              <p className="text-2xl md:text-3xl font-black text-white/40 leading-relaxed tracking-tight">
+              <p className="text-lg md:text-3xl font-black text-white/40 leading-relaxed tracking-tight line-clamp-2 md:line-clamp-none">
                 High-fidelity audio streaming for <span className="text-white">MelodyMentor</span> by Mentozy...
               </p>
             </div>
