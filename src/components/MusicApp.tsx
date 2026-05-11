@@ -445,7 +445,7 @@ export default function MusicApp({ onBackToLanding }: MusicAppProps) {
                   </div>
 
                   {/* Centered Album Art */}
-                  <div className="flex-1 flex items-center justify-center min-h-0 mb-6 mt-2 px-4">
+                  <div className="flex-1 flex items-start justify-center min-h-0 mb-16 mt-0 px-4">
                     <div className="w-full aspect-square max-w-[320px] rounded-xl overflow-hidden shadow-md">
                       <img src={current?.coverUrl || DEFAULT_COVER} className="w-full h-full object-cover" alt="" />
                     </div>
