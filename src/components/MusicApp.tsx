@@ -142,25 +142,35 @@ export default function MusicApp({ onBackToLanding }: MusicAppProps) {
     playTrack(songs[0])
   }
 
-  const playTrack = async (song: Song) => {
-    if (!song.preview) {
-      console.error("No preview URL for song:", song.title)
-      return
-    }
+  const playTrack = (song: Song) => {
     setCurrent(song)
     setIsPlaying(true)
+    if (window.innerWidth < 768) {
+      setIsFullScreenPlayerOpen(true)
+      setIsFloatingCardOpen(false)
+    }
     if (audioRef.current) {
-      audioRef.current.pause()
       audioRef.current.src = song.preview
       audioRef.current.load()
-      const playPromise = audioRef.current.play()
-      if (playPromise !== undefined) {
-        playPromise.catch(error => {
-          console.error("Playback failed:", error)
-          setIsPlaying(false)
-        })
-      }
+      audioRef.current.play()
     }
+  }
+
+  const toggleFavorite = (song: Song) => {
+    if (favorites.find(f => f.id === song.id)) {
+      setFavorites(favorites.filter(f => f.id !== song.id))
+    } else {
+      setFavorites([...favorites, song])
+    }
+  }
+
+  const addToPlaylist = (song: Song, playlistId: string) => {
+    setPlaylists(playlists.map(p => {
+      if (p.id === playlistId && !p.songs.find(s => s.id === song.id)) {
+        return { ...p, songs: [...p.songs, song] }
+      }
+      return p
+    }))
   }
 
   const togglePlayPause = () => {
@@ -199,17 +209,6 @@ export default function MusicApp({ onBackToLanding }: MusicAppProps) {
     const index = queue.findIndex(s => s.id === current?.id)
     const prevIndex = (index - 1 + queue.length) % queue.length
     playTrack(queue[prevIndex])
-  }
-
-  const toggleFavorite = (id: string) => {
-    const song = [...trendingSongs, ...tracks, ...queue, ...favorites].find(s => s.id === id)
-    if (!song) return
-    if (favorites.some(f => f.id === id)) setFavorites(favorites.filter(f => f.id !== id))
-    else setFavorites([...favorites, { ...song, isFavorite: true }])
-  }
-
-  const addSongToPlaylist = (pid: string, song: Song) => {
-    setPlaylists(playlists.map(p => p.id === pid ? { ...p, songs: p.songs.some(s => s.id === song.id) ? p.songs : [...p.songs, song] } : p))
   }
 
   const handlePlaylistSearch = async () => {
@@ -265,7 +264,7 @@ export default function MusicApp({ onBackToLanding }: MusicAppProps) {
       <h4 className="font-black text-white text-sm truncate leading-none mb-2 px-1">{song.title}</h4>
       <p className="text-slate-500 text-[10px] font-bold uppercase tracking-widest truncate px-1">{song.artist}</p>
       <button 
-        onClick={(e) => { e.stopPropagation(); toggleFavorite(song.id); }}
+        onClick={(e) => { e.stopPropagation(); toggleFavorite(song); }}
         className={`absolute top-6 right-6 p-2 rounded-full backdrop-blur-md opacity-0 group-hover:opacity-100 transition-all ${favorites.some(f => f.id === song.id) ? 'bg-rose-500 text-white' : 'bg-black/40 text-white hover:text-rose-500'}`}
       >
         <Heart className={`w-3.5 h-3.5 ${favorites.some(f => f.id === song.id) ? 'fill-current' : ''}`} />
@@ -513,10 +512,13 @@ export default function MusicApp({ onBackToLanding }: MusicAppProps) {
                   <div className="space-y-4">
                     {playlists.find(p => p.id === selectedPlaylistId)?.songs.map((s, i) => (
                       <div key={s.id} onClick={() => {
-                        const p = playlists.find(x => x.id === selectedPlaylistId);
-                        if (p) setQueue(p.songs);
-                        playTrack(s);
-                      }} className="flex items-center gap-4 md:gap-6 p-2 md:p-4 rounded-[1.5rem] hover:bg-white/5 transition-all cursor-pointer group">
+                        if (window.innerWidth < 768) {
+                          playTrack(s);
+                        } else {
+                          setSelectedSong(s);
+                          setIsFloatingCardOpen(true);
+                        }
+                      }} className="flex items-center gap-4 md:gap-6 p-3 md:p-4 rounded-[1.5rem] hover:bg-white/5 transition-all cursor-pointer group">
                         <span className="w-6 text-base font-black text-slate-700 group-hover:text-primary transition-colors text-center hidden md:block">{i + 1}</span>
                         <img src={s.coverUrl || DEFAULT_COVER} className="w-16 h-16 md:w-14 md:h-14 rounded-xl object-cover shadow-lg" alt="" />
                         <div className="flex-1 min-w-0">
@@ -720,60 +722,67 @@ export default function MusicApp({ onBackToLanding }: MusicAppProps) {
             </div>
 
             {/* Album Art */}
-            <div className="relative z-10 flex-1 flex items-center justify-center p-8">
+            <div className="relative z-10 flex-1 flex items-center justify-center p-6 min-h-0">
               <motion.img 
-                layoutId={`player-art-${current.id}`}
+                layoutId={window.innerWidth > 768 ? `player-art-${current.id}` : undefined}
                 src={current.coverUrl || DEFAULT_COVER} 
-                className="w-full aspect-square rounded-[2rem] shadow-[0_40px_100px_-20px_rgba(0,0,0,0.6)] object-cover" 
+                className="w-full max-h-[45vh] aspect-square rounded-[2.5rem] shadow-[0_40px_100px_-20px_rgba(0,0,0,0.8)] object-cover" 
                 alt="" 
               />
             </div>
 
             {/* Song Info */}
-            <div className="relative z-10 px-8 mb-8">
-              <div className="flex items-center justify-between gap-4">
-                <div className="min-w-0">
-                  <h2 className="text-3xl font-black text-white tracking-tighter leading-tight mb-1">{current.title}</h2>
-                  <p className="text-lg font-bold text-white/60 truncate">{current.artist}</p>
+            <div className="relative z-10 px-10 mb-6 shrink-0">
+              <div className="flex items-center justify-between gap-6">
+                <div className="min-w-0 flex-1">
+                  <h2 className="text-3xl font-black text-white tracking-tighter leading-tight mb-1 truncate">{current.title}</h2>
+                  <p className="text-lg font-bold text-white/50 truncate uppercase tracking-widest">{current.artist}</p>
                 </div>
-                <button className="w-12 h-12 rounded-full border-2 border-white/10 flex items-center justify-center text-white/70"><Plus className="w-6 h-6" /></button>
+                <div className="flex items-center gap-2">
+                  <button onClick={() => toggleFavorite(current)} className={`w-12 h-12 rounded-full border-2 border-white/5 flex items-center justify-center transition-all ${favorites.find(f => f.id === current.id) ? 'bg-primary border-primary text-white' : 'text-white/40'}`}>
+                    <Heart className={`w-6 h-6 ${favorites.find(f => f.id === current.id) ? 'fill-current' : ''}`} />
+                  </button>
+                  <button onClick={() => setShowAddSongSearch(true)} className="w-12 h-12 rounded-full border-2 border-white/5 flex items-center justify-center text-white/40">
+                    <Plus className="w-6 h-6" />
+                  </button>
+                </div>
               </div>
             </div>
 
             {/* Progress Bar */}
-            <div className="relative z-10 px-8 mb-10">
-              <div className="h-1.5 bg-white/10 rounded-full relative mb-4">
-                <div className="absolute h-full bg-white rounded-full" style={{ width: `${(currentTime/duration)*100}%` }} />
-                <input type="range" min="0" max={duration} value={currentTime} onChange={(e) => { if (audioRef.current) audioRef.current.currentTime = Number(e.target.value) }} className="absolute inset-0 w-full h-full opacity-0" />
+            <div className="relative z-10 px-10 mb-8 shrink-0">
+              <div className="h-1.5 bg-white/10 rounded-full relative mb-4 overflow-hidden">
+                <div className="absolute h-full bg-white rounded-full transition-all" style={{ width: `${(currentTime/duration)*100}%` }} />
+                <input type="range" min="0" max={duration} value={currentTime} onChange={(e) => { if (audioRef.current) audioRef.current.currentTime = Number(e.target.value) }} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
               </div>
-              <div className="flex justify-between text-[10px] font-black text-white/40 tabular-nums uppercase tracking-widest">
+              <div className="flex justify-between text-[10px] font-black text-white/30 tabular-nums uppercase tracking-[0.2em]">
                 <span>{Math.floor(currentTime/60)}:{String(Math.floor(currentTime%60)).padStart(2,'0')}</span>
                 <span>{Math.floor(duration/60)}:{String(Math.floor(duration%60)).padStart(2,'0')}</span>
               </div>
             </div>
 
             {/* Controls */}
-            <div className="relative z-10 px-8 flex items-center justify-between mb-12">
-              <button onClick={() => setShuffle(!shuffle)} className={`transition-colors ${shuffle ? 'text-primary' : 'text-white/40'}`}><Shuffle className="w-6 h-6" /></button>
+            <div className="relative z-10 px-10 flex items-center justify-between mb-8 shrink-0">
+              <button onClick={() => setShuffle(!shuffle)} className={`transition-colors ${shuffle ? 'text-primary' : 'text-white/30'}`}><Shuffle className="w-7 h-7" /></button>
               <div className="flex items-center gap-10">
-                <button onClick={playPrevious} className="text-white"><SkipBack className="w-10 h-10 fill-current" /></button>
-                <button onClick={togglePlayPause} className="w-24 h-24 bg-white text-black rounded-full flex items-center justify-center shadow-2xl">
+                <button onClick={playPrevious} className="text-white"><SkipBack className="w-11 h-11 fill-current" /></button>
+                <button onClick={togglePlayPause} className="w-24 h-24 bg-white text-black rounded-full flex items-center justify-center shadow-[0_20px_50px_rgba(255,255,255,0.1)] hover:scale-105 active:scale-95 transition-all">
                   {isPlaying ? <Pause className="w-10 h-10 fill-current" /> : <Play className="w-10 h-10 fill-current ml-1" />}
                 </button>
-                <button onClick={playNext} className="text-white"><SkipForward className="w-10 h-10 fill-current" /></button>
+                <button onClick={playNext} className="text-white"><SkipForward className="w-11 h-11 fill-current" /></button>
               </div>
-              <button className="text-white/40"><Mic2 className="w-6 h-6" /></button>
+              <button className="text-white/30"><Mic2 className="w-7 h-7" /></button>
             </div>
 
-            {/* Bottom Info */}
-            <div className="relative z-10 px-8 pb-10 flex items-center justify-between">
-              <div className="flex items-center gap-2 text-[#4f46e5]">
-                <Zap className="w-4 h-4 fill-current" />
-                <span className="text-[10px] font-black uppercase tracking-[0.2em]">Mentozy Soundcore</span>
+            {/* Bottom Info Bar */}
+            <div className="relative z-10 px-10 pb-10 flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-2.5 text-[#4f46e5]">
+                <Zap className="w-5 h-5 fill-current" />
+                <span className="text-[11px] font-black uppercase tracking-[0.25em]">Mentozy Soundcore</span>
               </div>
-              <div className="flex items-center gap-6">
-                <button className="text-white/40"><LogOut className="w-5 h-5 -rotate-90" /></button>
-                <button className="text-white/40"><ListMusic className="w-5 h-5" /></button>
+              <div className="flex items-center gap-8">
+                <button className="text-white/30"><LogOut className="w-6 h-6 -rotate-90" /></button>
+                <button onClick={() => { setIsFullScreenPlayerOpen(false); setCurrentView('library'); }} className="text-white/30"><ListMusic className="w-6 h-6" /></button>
               </div>
             </div>
 
