@@ -330,7 +330,7 @@ export default function MusicApp({ onBackToLanding }: MusicAppProps) {
       </aside>
 
       {/* Main Content Area */}
-      <main className={`flex-1 relative flex flex-col min-w-0 ${isFullScreenPlayerOpen ? 'bg-black' : 'bg-black'}`}>
+      <main className={`flex-1 relative flex flex-col pb-20 md:pb-0 min-w-0 ${isFullScreenPlayerOpen ? 'bg-black' : 'bg-black'}`}>
         {/* Top Header (YouTube Music Style) */}
         <header className="h-16 md:h-20 flex items-center justify-between px-4 md:px-10 shrink-0 z-40 bg-inherit border-b border-white/5">
           <div className="flex items-center gap-10 flex-1">
@@ -445,7 +445,7 @@ export default function MusicApp({ onBackToLanding }: MusicAppProps) {
                   </div>
 
                   {/* Centered Album Art */}
-                  <div className="flex-1 flex items-center justify-center min-h-0 mb-10 px-4">
+                  <div className="flex-1 flex items-center justify-center min-h-0 mb-6 mt-2 px-4">
                     <div className="w-full aspect-square max-w-[320px] rounded-xl overflow-hidden shadow-md">
                       <img src={current?.coverUrl || DEFAULT_COVER} className="w-full h-full object-cover" alt="" />
                     </div>
@@ -515,7 +515,7 @@ export default function MusicApp({ onBackToLanding }: MusicAppProps) {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}
                 transition={{ duration: 0.4, ease: "easeOut" }}
-                className="px-6 md:px-10 pb-40"
+                className="px-6 md:px-10 pb-52 md:pb-40"
               >
               {currentView === 'home' && (
                 <div className="space-y-12">
@@ -686,7 +686,7 @@ export default function MusicApp({ onBackToLanding }: MusicAppProps) {
         {current && !isFullScreenPlayerOpen && (
           <motion.div 
             initial={{ y: 100 }} animate={{ y: 0 }} exit={{ y: 100 }}
-            className="fixed bottom-0 left-0 right-0 h-20 md:h-24 bg-[#0a0a0a] border-t border-white/5 z-[100] px-4 md:px-10 flex items-center justify-between"
+            className="fixed bottom-20 md:bottom-0 left-0 right-0 h-20 md:h-24 bg-[#0a0a0a] border-t border-white/5 z-[100] px-4 md:px-10 flex items-center justify-between"
           >
             {/* Left: Controls */}
             <div className="flex items-center gap-4 md:gap-8 w-1/4">
@@ -748,7 +748,7 @@ export default function MusicApp({ onBackToLanding }: MusicAppProps) {
 
       {/* Mobile Bottom Navigation */}
       {!isFullScreenPlayerOpen && (
-        <nav className="fixed bottom-0 left-0 right-0 h-24 bg-[#181818] border-t border-white/5 flex md:hidden items-center justify-around z-[55] px-6 pb-6">
+        <nav className="fixed bottom-0 left-0 right-0 h-20 bg-[#181818] border-t border-white/5 flex md:hidden items-center justify-around z-[55] px-6 pb-2">
           <button onClick={() => setCurrentView('home')} className={`flex flex-col items-center gap-1.5 ${currentView === 'home' ? 'text-primary' : 'text-slate-500'}`}>
             <Home className={`w-7 h-7 ${currentView === 'home' ? 'fill-current' : ''}`} />
             <span className="text-[11px] font-semibold uppercase tracking-normal">Home</span>
