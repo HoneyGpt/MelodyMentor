@@ -701,9 +701,10 @@ export default function MusicApp({ onBackToLanding }: MusicAppProps) {
               <h4 className="text-sm font-semibold text-white truncate mb-0.5">{current.title}</h4>
               <p className="text-[10px] font-bold text-white/40 truncate uppercase tracking-[0.1em]">{current.artist}</p>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="hidden md:flex items-center gap-1 ml-4">
               <button onClick={(e) => e.stopPropagation()} className="text-white/40 hover:text-white p-2"><ThumbsDown className="w-4 h-4" /></button>
               <button onClick={(e) => e.stopPropagation()} className="text-white/40 hover:text-white p-2"><ThumbsUp className="w-4 h-4" /></button>
+              <button onClick={(e) => e.stopPropagation()} className="text-white/40 hover:text-white p-2"><MoreVertical className="w-4 h-4" /></button>
             </div>
           </div>
 
