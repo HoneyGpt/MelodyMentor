@@ -43,8 +43,8 @@ export default function MusicApp({ onBackToLanding }: MusicAppProps) {
   // --- UI State ---
   const [currentView, setCurrentView] = useState<'home' | 'search' | 'library' | 'favorites' | 'playlist'>('home')
   const [selectedPlaylistId, setSelectedPlaylistId] = useState<string | null>(null)
-  const [isFloatingCardOpen, setIsFloatingCardOpen] = useState(false)
   const [isFullScreenPlayerOpen, setIsFullScreenPlayerOpen] = useState(false)
+  const [showPlaylistSelectorModal, setShowPlaylistSelectorModal] = useState(false)
   const [selectedSong, setSelectedSong] = useState<Song | null>(null)
   const [isPlaying, setIsPlaying] = useState(false)
   const [currentTime, setCurrentTime] = useState(0)
@@ -145,10 +145,7 @@ export default function MusicApp({ onBackToLanding }: MusicAppProps) {
   const playTrack = (song: Song) => {
     setCurrent(song)
     setIsPlaying(true)
-    if (window.innerWidth < 768) {
-      setIsFullScreenPlayerOpen(true)
-      setIsFloatingCardOpen(false)
-    }
+    setIsFullScreenPlayerOpen(true)
     if (audioRef.current) {
       audioRef.current.src = song.preview
       audioRef.current.load()
@@ -511,14 +508,7 @@ export default function MusicApp({ onBackToLanding }: MusicAppProps) {
                   </div>
                   <div className="space-y-4">
                     {playlists.find(p => p.id === selectedPlaylistId)?.songs.map((s, i) => (
-                      <div key={s.id} onClick={() => {
-                        if (window.innerWidth < 768) {
-                          playTrack(s);
-                        } else {
-                          setSelectedSong(s);
-                          setIsFloatingCardOpen(true);
-                        }
-                      }} className="flex items-center gap-4 md:gap-6 p-3 md:p-4 rounded-[1.5rem] hover:bg-white/5 transition-all cursor-pointer group">
+                      <div key={s.id} onClick={() => playTrack(s)} className="flex items-center gap-4 md:gap-6 p-3 md:p-4 rounded-[1.5rem] hover:bg-white/5 transition-all cursor-pointer group">
                         <span className="w-6 text-base font-black text-slate-700 group-hover:text-primary transition-colors text-center hidden md:block">{i + 1}</span>
                         <img src={s.coverUrl || DEFAULT_COVER} className="w-16 h-16 md:w-14 md:h-14 rounded-xl object-cover shadow-lg" alt="" />
                         <div className="flex-1 min-w-0">
@@ -541,13 +531,12 @@ export default function MusicApp({ onBackToLanding }: MusicAppProps) {
           <motion.div 
             initial={{ y: 100 }} animate={{ y: 0 }}
             className="fixed bottom-24 md:bottom-8 left-4 right-4 md:left-[calc(18rem+2rem)] md:right-10 z-50 bg-slate-900/90 backdrop-blur-3xl border border-white/10 rounded-[2.5rem] md:rounded-[3rem] p-3 md:p-6 shadow-[0_50px_100px_-20px_rgba(0,0,0,0.6)]"
-            onClick={() => { if (window.innerWidth < 768) setIsFullScreenPlayerOpen(true) }}
+            onClick={() => setIsFullScreenPlayerOpen(true)}
           >
             <div className="flex flex-col gap-2 md:gap-4">
               <div className="flex items-center gap-4 lg:gap-12">
                 <div 
                   className="flex items-center gap-4 cursor-pointer min-w-0 flex-1 lg:flex-initial lg:w-72 group"
-                  onClick={() => { setSelectedSong(current); setIsFloatingCardOpen(true); }}
                 >
                   <img src={current.coverUrl || DEFAULT_COVER} className="w-14 h-14 md:w-16 md:h-16 rounded-2xl object-cover shadow-2xl group-hover:scale-105 transition-transform" alt="" />
                   <div className="min-w-0">
@@ -631,17 +620,32 @@ export default function MusicApp({ onBackToLanding }: MusicAppProps) {
       </nav>
 
       {/* Modals */}
-      <SongFloatingCard
-        song={selectedSong!}
-        isOpen={isFloatingCardOpen && !!selectedSong}
-        onClose={() => setIsFloatingCardOpen(false)}
-        onPlay={() => playTrack(selectedSong!)}
-        onToggleFavorite={toggleFavorite}
-        onAddToQueue={(s) => setQueue([...queue, s])}
-        onAddToPlayNext={(s) => { const idx = queue.findIndex(x => x.id === current?.id); const nq = [...queue]; nq.splice(idx+1, 0, s); setQueue(nq); }}
-        onAddToPlaylist={addToPlaylist}
-        playlists={playlists}
-      />
+      <AnimatePresence>
+        {showPlaylistSelectorModal && current && (
+          <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setShowPlaylistSelectorModal(false)} className="absolute inset-0 bg-black/90 backdrop-blur-md" />
+            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="relative bg-slate-900 border border-white/10 p-10 rounded-[3rem] w-full max-w-sm shadow-2xl">
+              <h3 className="text-2xl font-black mb-6 tracking-tighter">Add to Playlist</h3>
+              <div className="space-y-2 max-h-60 overflow-y-auto no-scrollbar">
+                {playlists.length === 0 ? (
+                  <p className="text-slate-500 font-bold text-center py-4">No playlists yet</p>
+                ) : (
+                  playlists.map(p => (
+                    <button 
+                      key={p.id} 
+                      onClick={() => { addToPlaylist(current, p.id); setShowPlaylistSelectorModal(false); }}
+                      className="w-full text-left p-4 bg-white/5 hover:bg-white/10 rounded-2xl transition-colors font-black text-sm"
+                    >
+                      {p.name}
+                    </button>
+                  ))
+                )}
+              </div>
+              <Button onClick={() => setShowPlaylistSelectorModal(false)} className="w-full mt-6 rounded-2xl h-14 bg-white/5 border border-white/5 text-slate-400 font-black uppercase tracking-widest text-[10px]">Close</Button>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       <AnimatePresence>
         {showCreateModal && (
@@ -705,95 +709,103 @@ export default function MusicApp({ onBackToLanding }: MusicAppProps) {
         {isFullScreenPlayerOpen && current && (
           <motion.div 
             initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
-            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-            className="fixed inset-0 z-[110] bg-slate-950 flex flex-col md:hidden"
+            transition={{ type: 'spring', damping: 30, stiffness: 300 }}
+            className="fixed inset-0 z-[110] bg-slate-950 flex flex-col p-6 md:p-12"
           >
             {/* Dynamic Background Gradient */}
-            <div className="absolute inset-0 bg-gradient-to-b from-indigo-900/40 to-slate-950" />
+            <div className="absolute inset-0 bg-gradient-to-b from-indigo-900/30 to-slate-950" />
             
-            {/* Header */}
-            <div className="relative z-10 flex items-center justify-between p-6">
-              <button onClick={() => setIsFullScreenPlayerOpen(false)}><X className="w-8 h-8 text-white/70" /></button>
+            {/* Header Section */}
+            <div className="relative z-10 flex items-center justify-between mb-10">
+              <button onClick={() => setIsFullScreenPlayerOpen(false)} className="p-2 -ml-2 text-white/70 hover:text-white transition-colors">
+                <X className="w-8 h-8" />
+              </button>
               <div className="text-center">
-                <p className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em]">Playing From</p>
-                <p className="text-xs font-black text-white uppercase tracking-wider">{currentView.toUpperCase()}</p>
+                <p className="text-[10px] font-black text-white/40 uppercase tracking-[0.3em] mb-1">Playing From</p>
+                <p className="text-xs font-black text-white uppercase tracking-widest">{currentView === 'playlist' ? 'Your Playlist' : 'MelodyMentor'}</p>
               </div>
-              <button><MoreHorizontal className="w-8 h-8 text-white/70" /></button>
+              <button className="p-2 -mr-2 text-white/70 hover:text-white">
+                <MoreHorizontal className="w-8 h-8" />
+              </button>
             </div>
 
-            {/* Album Art */}
-            <div className="relative z-10 flex-1 flex items-center justify-center p-6 min-h-0">
-              <motion.img 
-                layoutId={window.innerWidth > 768 ? `player-art-${current.id}` : undefined}
-                src={current.coverUrl || DEFAULT_COVER} 
-                className="w-full max-h-[45vh] aspect-square rounded-[2.5rem] shadow-[0_40px_100px_-20px_rgba(0,0,0,0.8)] object-cover" 
-                alt="" 
-              />
-            </div>
+            {/* Main Visual Content */}
+            <div className="relative z-10 flex-1 flex flex-col justify-center max-w-lg mx-auto w-full">
+              {/* Album Art Section */}
+              <div className="relative w-full aspect-square mb-12">
+                <motion.img 
+                  layoutId={window.innerWidth > 768 ? `player-art-${current.id}` : undefined}
+                  src={current.coverUrl || DEFAULT_COVER} 
+                  className="w-full h-full rounded-[2.5rem] shadow-[0_40px_120px_-20px_rgba(0,0,0,0.8)] object-cover border border-white/5" 
+                  alt="" 
+                />
+              </div>
 
-            {/* Song Info */}
-            <div className="relative z-10 px-10 mb-6 shrink-0">
-              <div className="flex items-center justify-between gap-6">
-                <div className="min-w-0 flex-1">
-                  <h2 className="text-3xl font-black text-white tracking-tighter leading-tight mb-1 truncate">{current.title}</h2>
-                  <p className="text-lg font-bold text-white/50 truncate uppercase tracking-widest">{current.artist}</p>
+              {/* Title & Artist Section */}
+              <div className="flex items-center justify-between gap-6 mb-10">
+                <div className="min-w-0">
+                  <h2 className="text-4xl md:text-5xl font-black text-white tracking-tighter leading-tight mb-2 truncate">{current.title}</h2>
+                  <p className="text-xl md:text-2xl font-bold text-white/50 truncate tracking-wide">{current.artist}</p>
                 </div>
-                <div className="flex items-center gap-2">
-                  <button onClick={() => toggleFavorite(current)} className={`w-12 h-12 rounded-full border-2 border-white/5 flex items-center justify-center transition-all ${favorites.find(f => f.id === current.id) ? 'bg-primary border-primary text-white' : 'text-white/40'}`}>
-                    <Heart className={`w-6 h-6 ${favorites.find(f => f.id === current.id) ? 'fill-current' : ''}`} />
-                  </button>
-                  <button onClick={() => setShowAddSongSearch(true)} className="w-12 h-12 rounded-full border-2 border-white/5 flex items-center justify-center text-white/40">
-                    <Plus className="w-6 h-6" />
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {/* Progress Bar */}
-            <div className="relative z-10 px-10 mb-8 shrink-0">
-              <div className="h-1.5 bg-white/10 rounded-full relative mb-4 overflow-hidden">
-                <div className="absolute h-full bg-white rounded-full transition-all" style={{ width: `${(currentTime/duration)*100}%` }} />
-                <input type="range" min="0" max={duration} value={currentTime} onChange={(e) => { if (audioRef.current) audioRef.current.currentTime = Number(e.target.value) }} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
-              </div>
-              <div className="flex justify-between text-[10px] font-black text-white/30 tabular-nums uppercase tracking-[0.2em]">
-                <span>{Math.floor(currentTime/60)}:{String(Math.floor(currentTime%60)).padStart(2,'0')}</span>
-                <span>{Math.floor(duration/60)}:{String(Math.floor(duration%60)).padStart(2,'0')}</span>
-              </div>
-            </div>
-
-            {/* Controls */}
-            <div className="relative z-10 px-10 flex items-center justify-between mb-8 shrink-0">
-              <button onClick={() => setShuffle(!shuffle)} className={`transition-colors ${shuffle ? 'text-primary' : 'text-white/30'}`}><Shuffle className="w-7 h-7" /></button>
-              <div className="flex items-center gap-10">
-                <button onClick={playPrevious} className="text-white"><SkipBack className="w-11 h-11 fill-current" /></button>
-                <button onClick={togglePlayPause} className="w-24 h-24 bg-white text-black rounded-full flex items-center justify-center shadow-[0_20px_50px_rgba(255,255,255,0.1)] hover:scale-105 active:scale-95 transition-all">
-                  {isPlaying ? <Pause className="w-10 h-10 fill-current" /> : <Play className="w-10 h-10 fill-current ml-1" />}
+                <button onClick={() => setShowPlaylistSelectorModal(true)} className="w-16 h-16 rounded-full border-2 border-white/10 flex items-center justify-center text-white/80 hover:bg-white/5 hover:border-white/20 transition-all active:scale-90 shrink-0">
+                  <Plus className="w-8 h-8" />
                 </button>
-                <button onClick={playNext} className="text-white"><SkipForward className="w-11 h-11 fill-current" /></button>
               </div>
-              <button className="text-white/30"><Mic2 className="w-7 h-7" /></button>
+
+              {/* Progress Control Section */}
+              <div className="mb-12">
+                <div className="h-1.5 w-full bg-white/10 rounded-full relative mb-4 group cursor-pointer overflow-hidden">
+                  <div className="absolute h-full bg-white rounded-full transition-all" style={{ width: `${(currentTime/duration)*100}%` }} />
+                  <input type="range" min="0" max={duration} value={currentTime} onChange={(e) => { if (audioRef.current) audioRef.current.currentTime = Number(e.target.value) }} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+                </div>
+                <div className="flex justify-between text-xs font-black text-white/30 tabular-nums tracking-[0.2em]">
+                  <span>{Math.floor(currentTime/60)}:{String(Math.floor(currentTime%60)).padStart(2,'0')}</span>
+                  <span>{Math.floor(duration/60)}:{String(Math.floor(duration%60)).padStart(2,'0')}</span>
+                </div>
+              </div>
+
+              {/* Playback Controls Section */}
+              <div className="flex items-center justify-between gap-4 mb-12">
+                <button onClick={() => setShuffle(!shuffle)} className={`transition-all p-2 ${shuffle ? 'text-primary' : 'text-white/30 hover:text-white/60'}`}>
+                  <Shuffle className="w-8 h-8" />
+                </button>
+                <div className="flex items-center gap-8 md:gap-12">
+                  <button onClick={playPrevious} className="text-white hover:scale-110 transition-transform active:scale-90">
+                    <SkipBack className="w-12 h-12 md:w-14 md:h-14 fill-current" />
+                  </button>
+                  <button onClick={togglePlayPause} className="w-24 h-24 md:w-28 md:h-28 bg-white text-black rounded-full flex items-center justify-center shadow-[0_30px_60px_-15px_rgba(255,255,255,0.2)] hover:scale-105 active:scale-95 transition-all">
+                    {isPlaying ? <Pause className="w-12 h-12 md:w-14 md:h-14 fill-current" /> : <Play className="w-12 h-12 md:w-14 md:h-14 fill-current ml-1" />}
+                  </button>
+                  <button onClick={playNext} className="text-white hover:scale-110 transition-transform active:scale-90">
+                    <SkipForward className="w-12 h-12 md:w-14 md:h-14 fill-current" />
+                  </button>
+                </div>
+                <button className="text-white/30 hover:text-white/60 p-2">
+                  <Mic2 className="w-8 h-8" />
+                </button>
+              </div>
             </div>
 
-            {/* Bottom Info Bar */}
-            <div className="relative z-10 px-10 pb-10 flex items-center justify-between shrink-0">
-              <div className="flex items-center gap-2.5 text-[#4f46e5]">
+            {/* Bottom Brand Bar */}
+            <div className="relative z-10 flex items-center justify-between max-w-lg mx-auto w-full mb-8">
+              <div className="flex items-center gap-3 text-[#4f46e5] font-black uppercase tracking-[0.3em] text-[10px]">
                 <Zap className="w-5 h-5 fill-current" />
-                <span className="text-[11px] font-black uppercase tracking-[0.25em]">Mentozy Soundcore</span>
+                <span>Mentozy Soundcore</span>
               </div>
               <div className="flex items-center gap-8">
-                <button className="text-white/30"><LogOut className="w-6 h-6 -rotate-90" /></button>
-                <button onClick={() => { setIsFullScreenPlayerOpen(false); setCurrentView('library'); }} className="text-white/30"><ListMusic className="w-6 h-6" /></button>
+                <button className="text-white/30 hover:text-white/60"><LogOut className="w-6 h-6 -rotate-90" /></button>
+                <button onClick={() => { setIsFullScreenPlayerOpen(false); setCurrentView('library'); }} className="text-white/30 hover:text-white/60"><ListMusic className="w-6 h-6" /></button>
               </div>
             </div>
 
-            {/* Lyrics Preview */}
-            <div className="relative z-10 mt-auto bg-white/5 backdrop-blur-xl rounded-t-[3rem] p-8 pb-12 border-t border-white/10">
-              <div className="flex items-center justify-between mb-6">
-                <h4 className="text-sm font-black text-white uppercase tracking-[0.2em]">Lyrics Preview</h4>
-                <div className="px-3 py-1 bg-white/10 rounded-full text-[8px] font-black text-white/60 uppercase tracking-widest">Beta</div>
+            {/* Lyrics Section */}
+            <div className="relative z-10 max-w-lg mx-auto w-full bg-white/5 backdrop-blur-2xl rounded-[3rem] p-10 border border-white/10 shadow-2xl">
+              <div className="flex items-center justify-between mb-8">
+                <h4 className="text-[10px] font-black text-white/50 uppercase tracking-[0.4em]">Lyrics Preview</h4>
+                <div className="px-3 py-1 bg-white/10 rounded-full text-[8px] font-black text-white/60 uppercase tracking-widest">BETA</div>
               </div>
-              <p className="text-xl font-black text-white/40 leading-relaxed">
-                Enjoy the high-fidelity sound of <span className="text-white">MelodyMentor</span>. Lyrics sync coming in next update...
+              <p className="text-2xl md:text-3xl font-black text-white/40 leading-relaxed tracking-tight">
+                High-fidelity audio streaming for <span className="text-white">MelodyMentor</span> by Mentozy...
               </p>
             </div>
           </motion.div>
