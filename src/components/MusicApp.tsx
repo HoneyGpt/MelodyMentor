@@ -501,6 +501,36 @@ export default function MusicApp({ onBackToLanding }: MusicAppProps) {
                         <button onClick={(e) => { e.stopPropagation(); setRepeat(repeat === 'off' ? 'all' : 'off'); }} className={`transition-colors duration-200 ${repeat !== 'off' ? 'text-primary' : 'text-[#a7a7a7] hover:text-white'}`}><Repeat className="w-6 h-6" /></button>
                       </div>
                     </div>
+
+                    {/* Mobile Queue / Up Next Section (Shrink-0 so it expands the scroll area) */}
+                    <div className="px-4 mt-8 shrink-0 pb-10">
+                      <div className="bg-[#0a0a0a] rounded-2xl border border-white/5 p-4">
+                        <h3 className="text-[11px] font-semibold text-white/50 uppercase tracking-[0.2em] mb-4 px-2">Up Next</h3>
+                        <div className="space-y-1">
+                          {queue.map((s, i) => (
+                            <div 
+                              key={`${s.id}-${i}`}
+                              onClick={() => playTrack(s)}
+                              className={`flex items-center gap-4 p-3 rounded-xl transition-colors duration-200 cursor-pointer group ${s.id === current?.id ? 'bg-white/10' : 'hover:bg-white/5'}`}
+                            >
+                              <div className="relative w-12 h-12 shrink-0">
+                                <img src={s.coverUrl || DEFAULT_COVER} className="w-full h-full rounded-md object-cover" alt="" />
+                                {s.id === current?.id && isPlaying && (
+                                  <div className="absolute inset-0 bg-black/40 flex items-center justify-center rounded-md">
+                                    <Volume2 className="w-5 h-5 text-primary fill-current" />
+                                  </div>
+                                )}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <h5 className={`text-sm font-semibold truncate ${s.id === current?.id ? 'text-primary' : 'text-white'}`}>{s.title}</h5>
+                                <p className="text-[10px] font-bold text-white/40 truncate uppercase tracking-normal">{s.artist}</p>
+                              </div>
+                              <span className="text-[11px] font-bold text-white/30 tabular-nums">{s.duration}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </motion.div>
