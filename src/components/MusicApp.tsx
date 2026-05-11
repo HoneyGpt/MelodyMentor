@@ -445,38 +445,27 @@ export default function MusicApp({ onBackToLanding }: MusicAppProps) {
                   </div>
 
                   {/* Centered Album Art */}
-                  <div className="flex-1 flex items-start justify-center min-h-0 mb-16 mt-0 px-4">
+                  <div className="flex-1 flex items-start justify-center min-h-0 mb-8 mt-0 px-4">
                     <div className="w-full aspect-square max-w-[320px] rounded-xl overflow-hidden shadow-md">
                       <img src={current?.coverUrl || DEFAULT_COVER} className="w-full h-full object-cover" alt="" />
                     </div>
                   </div>
 
-                  {/* Track Info */}
-                  <div className="px-4 mb-10 shrink-0">
-                    <div className="flex items-center justify-between mb-1">
-                      <h2 className="text-2xl font-semibold text-white truncate pr-6">{current?.title}</h2>
-                      <button className="text-white/40 hover:text-white"><ChevronRight className="w-6 h-6" /></button>
+                  {/* Track Info & Add to Playlist */}
+                  <div className="px-6 mb-12 shrink-0">
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="min-w-0 flex-1">
+                        <h2 className="text-2xl font-bold text-white truncate mb-1">{current?.title}</h2>
+                        <p className="text-lg font-medium text-[#a7a7a7] truncate">{current?.artist}</p>
+                      </div>
+                      <button 
+                        onClick={(e) => { e.stopPropagation(); setShowPlaylistSelectorModal(true); }}
+                        className="flex flex-col items-center gap-1.5 text-[#a7a7a7] hover:text-white transition-colors duration-200 shrink-0"
+                      >
+                        <Plus className="w-8 h-8" />
+                        <span className="text-[10px] font-bold uppercase tracking-widest">Playlist</span>
+                      </button>
                     </div>
-                    <p className="text-lg font-medium text-[#a7a7a7]">{current?.artist}</p>
-                  </div>
-
-                  {/* Actions Row */}
-                  <div className="flex items-center justify-between px-6 mb-10 shrink-0">
-                    <button className="flex flex-col items-center gap-1 text-[#a7a7a7] hover:text-white transition-colors duration-200">
-                      <ThumbsUp className="w-6 h-6" />
-                      <span className="text-[10px] font-semibold">11K</span>
-                    </button>
-                    <button className="flex flex-col items-center gap-1 text-[#a7a7a7] hover:text-white transition-colors duration-200">
-                      <ThumbsDown className="w-6 h-6" />
-                    </button>
-                    <button className="flex flex-col items-center gap-1 text-[#a7a7a7] hover:text-white transition-colors duration-200">
-                      <ListMusic className="w-6 h-6" />
-                      <span className="text-[10px] font-semibold">Lyrics</span>
-                    </button>
-                    <button onClick={(e) => { e.stopPropagation(); setShowPlaylistSelectorModal(true); }} className="flex flex-col items-center gap-1 text-[#a7a7a7] hover:text-white transition-colors duration-200">
-                      <Save className="w-6 h-6" />
-                      <span className="text-[10px] font-semibold">Save</span>
-                    </button>
                   </div>
 
                   {/* Progress & Playback */}
