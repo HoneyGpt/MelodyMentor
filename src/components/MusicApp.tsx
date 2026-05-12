@@ -733,7 +733,23 @@ export default function MusicApp({ onBackToLanding }: MusicAppProps) {
 
               {currentView === 'search' && (
                 <div className="space-y-10 pt-4">
-                  <h3 className="text-3xl font-semibold tracking-tighter">Search Results</h3>
+                  {/* Mobile Search Bar (Only visible on mobile because header search is hidden) */}
+                  <div className="md:hidden flex items-center gap-3 bg-white/5 rounded-2xl px-5 py-4 border border-white/5 focus-within:border-primary transition-all">
+                    <Search className="w-6 h-6 text-white/40" />
+                    <input 
+                      type="text" 
+                      placeholder="Search songs, artists..." 
+                      className="bg-transparent border-none outline-none text-base font-medium w-full text-white placeholder:text-white/20"
+                      value={search}
+                      onChange={(e) => setSearch(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+                    />
+                    {search && (
+                      <button onClick={() => setSearch('')} className="text-white/20 hover:text-white"><X className="w-5 h-5" /></button>
+                    )}
+                  </div>
+
+                  <h3 className="text-3xl font-semibold tracking-tighter hidden md:block">Search Results</h3>
                   {loading ? (
                     <div className="flex items-center justify-center py-20"><Loader2 className="w-12 h-12 animate-spin text-primary" /></div>
                   ) : (
