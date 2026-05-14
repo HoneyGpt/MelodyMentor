@@ -270,6 +270,26 @@ export default function MusicApp({ onBackToLanding }: MusicAppProps) {
     finally { setSearchingInPlaylist(false) }
   }
 
+  const curatedPlaylists = [
+    { 
+      id: 'hype_vibe', 
+      name: 'Hype your Vibe', 
+      image: 'https://images.unsplash.com/photo-1493225255756-d9584f8606e9?w=800&auto=format&fit=crop&q=60',
+      songs: [
+        { id: 'unstoppable', title: 'Unstoppable', artist: 'Sia', album: 'This Is Acting', duration: '3:37', coverUrl: 'https://c.saavncdn.com/159/This-Is-Acting-English-2016-500x500.jpg', preview: '', isFavorite: false, source: 'gaana' },
+        { id: 'woman', title: 'Woman', artist: 'Doja Cat', album: 'Planet Her', duration: '2:52', coverUrl: 'https://c.saavncdn.com/831/Planet-Her-English-2021-20210624192617-500x500.jpg', preview: '', isFavorite: false, source: 'gaana' },
+        { id: 'heat_waves', title: 'Heat Waves', artist: 'Glass Animals', album: 'Dreamland', duration: '3:58', coverUrl: 'https://c.saavncdn.com/269/Dreamland-English-2020-20200806202421-500x500.jpg', preview: '', isFavorite: false, source: 'gaana' },
+        { id: 'say_my_name', title: 'Say My Name', artist: 'David Guetta', album: '7', duration: '3:18', coverUrl: 'https://c.saavncdn.com/791/7-English-2018-20180913165239-500x500.jpg', preview: '', isFavorite: false, source: 'gaana' },
+        { id: 'living_hell', title: 'Living Hell', artist: 'Bella Poarch', album: 'Dolls', duration: '2:53', coverUrl: 'https://c.saavncdn.com/247/Dolls-English-2022-20220810141629-500x500.jpg', preview: '', isFavorite: false, source: 'gaana' },
+        { id: '7_rings', title: '7 rings', artist: 'Ariana Grande', album: 'thank u, next', duration: '2:58', coverUrl: 'https://c.saavncdn.com/978/thank-u-next-English-2019-20190207163013-500x500.jpg', preview: '', isFavorite: false, source: 'gaana' }
+      ]
+    },
+    { id: 'midnight_city', name: 'Midnight City', image: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=800&auto=format&fit=crop&q=60', songs: [] },
+    { id: 'coding_flow', name: 'Coding Flow', image: 'https://images.unsplash.com/photo-1516259762381-22954d7d3ad2?w=800&auto=format&fit=crop&q=60', songs: [] },
+    { id: 'workout_hits', name: 'Power Workout', image: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=800&auto=format&fit=crop&q=60', songs: [] },
+    { id: 'desi_hits', name: 'Desi Hits', image: 'https://images.unsplash.com/photo-1514525253361-903497d3fd33?w=800&auto=format&fit=crop&q=60', songs: [] }
+  ]
+
   const createPlaylist = () => {
     if (!newPlaylistName.trim()) return
     const newPlaylist = { id: Date.now().toString(), name: newPlaylistName, songs: [] }
@@ -699,13 +719,11 @@ export default function MusicApp({ onBackToLanding }: MusicAppProps) {
                 <div className="space-y-10">
                   {/* Mobile Header & Filters (Spotify Style) */}
                   <div className="md:hidden space-y-6">
-                    <div className="flex items-center gap-3 overflow-x-auto no-scrollbar py-2">
+                    <div className="flex items-center gap-3 py-2">
                       <div className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center shrink-0 border border-white/5 overflow-hidden">
                         <img src="https://ui-avatars.com/api/?name=User&background=random" className="w-full h-full object-cover" alt="" />
                       </div>
-                      <button className="px-4 py-2 bg-primary text-black rounded-full text-xs font-bold whitespace-nowrap">All</button>
-                      <button className="px-4 py-2 bg-white/10 text-white rounded-full text-xs font-bold whitespace-nowrap border border-white/5">Music</button>
-                      <button className="px-4 py-2 bg-white/10 text-white rounded-full text-xs font-bold whitespace-nowrap border border-white/5">Podcasts</button>
+                      <button className="px-5 py-2.5 bg-primary text-black rounded-full text-xs font-bold whitespace-nowrap shadow-lg shadow-primary/20 transition-all active:scale-95">All</button>
                     </div>
 
                     {/* Quick Access Grid */}
@@ -717,19 +735,29 @@ export default function MusicApp({ onBackToLanding }: MusicAppProps) {
                         <div className="w-14 h-14 shrink-0 flex items-center justify-center bg-gradient-to-br from-indigo-700 to-indigo-900">
                           <Heart className="w-6 h-6 text-white fill-current" />
                         </div>
-                        <p className="text-[11px] font-bold text-white line-clamp-2 pr-2">Liked Songs</p>
+                        <p className="text-[11px] font-bold text-white pr-2 leading-tight">Liked Songs</p>
                       </div>
                       
-                      {trendingSongs.slice(0, 7).map((s, idx) => (
+                      {curatedPlaylists.slice(0, 5).map((p) => (
                         <div 
-                          key={s.id} 
-                          onClick={() => { setQueue(trendingSongs); playTrack(s); }}
+                          key={p.id} 
+                          onClick={() => { 
+                            if (p.songs.length > 0) {
+                              setQueue(p.songs);
+                              playTrack(p.songs[0]);
+                            } else {
+                              // If empty, search for related vibe
+                              setSearch(p.name);
+                              handleSearch();
+                              setCurrentView('search');
+                            }
+                          }}
                           className="flex items-center gap-3 bg-white/5 hover:bg-white/10 rounded-lg overflow-hidden border border-white/5 transition-all active:scale-[0.98] cursor-pointer"
                         >
                           <div className="w-14 h-14 shrink-0 flex items-center justify-center">
-                            <img src={s.coverUrl || DEFAULT_COVER} className="w-full h-full object-cover" alt="" />
+                            <img src={p.image} className="w-full h-full object-cover" alt="" />
                           </div>
-                          <p className="text-[11px] font-bold text-white line-clamp-2 pr-2">{s.title}</p>
+                          <p className="text-[11px] font-bold text-white line-clamp-2 pr-2 leading-tight">{p.name}</p>
                         </div>
                       ))}
                     </div>
