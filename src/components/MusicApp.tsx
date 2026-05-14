@@ -7,6 +7,7 @@ import Hls from 'hls.js'
 
 interface Song {
   id: string
+  seokey?: string // Optional for Gaana re-fetching
   title: string
   artist: string
   album: string
@@ -152,15 +153,35 @@ export default function MusicApp({ onBackToLanding }: MusicAppProps) {
   const playTrack = async (song: Song, openFullScreen = true) => {
     let songToPlay = { ...song };
 
-    // Auto-search fallback if preview is missing (for curated/hardcoded songs)
-    if (!songToPlay.preview) {
+    // Auto-refresh stream URL for Gaana tracks (they are time-sensitive)
+    if (song.source === 'gaana' && song.seokey) {
+      try {
+        const res = await fetch(`/api/songs/info?seokey=${song.seokey}&source=gaana`)
+        if (res.ok) {
+          const freshData = await res.json()
+          if (freshData.preview) {
+            songToPlay = { ...freshData, id: song.id, isFavorite: song.isFavorite };
+          }
+        }
+      } catch (e) { 
+        console.error("Gaana refresh failed, using fallback:", e)
+        // Fallback to title+artist search if seokey info fails
+        if (!songToPlay.preview) {
+          try {
+            const res = await fetch(`/api/songs?search=${encodeURIComponent(song.title + ' ' + song.artist)}`)
+            const data = await res.json()
+            const results = Array.isArray(data) ? data : (data.songs || [])
+            if (results.length > 0) songToPlay = { ...results[0], id: song.id };
+          } catch (e2) { console.error("Search fallback failed:", e2) }
+        }
+      }
+    } else if (!songToPlay.preview) {
+      // General fallback for any track missing a preview
       try {
         const res = await fetch(`/api/songs?search=${encodeURIComponent(song.title + ' ' + song.artist)}`)
         const data = await res.json()
         const results = Array.isArray(data) ? data : (data.songs || [])
-        if (results.length > 0) {
-          songToPlay = { ...results[0], id: song.id }; // Keep original ID but use new metadata/preview
-        }
+        if (results.length > 0) songToPlay = { ...results[0], id: song.id };
       } catch (e) { console.error("Auto-fetch failed:", e) }
     }
 
