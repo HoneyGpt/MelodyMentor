@@ -288,7 +288,7 @@ export default function MusicApp({ onBackToLanding }: MusicAppProps) {
     { 
       id: 'hype_vibe', 
       name: 'Hype your Vibe', 
-      image: 'https://images.unsplash.com/photo-1514525253361-903497d3fd33?w=800&auto=format&fit=crop&q=60',
+      image: 'https://images.unsplash.com/photo-1493225255756-d9584f8606e9?w=800&auto=format&fit=crop&q=60',
       songs: [
         { id: 'unstoppable', title: 'Unstoppable', artist: 'Sia', album: 'This Is Acting', duration: '3:37', coverUrl: 'https://c.saavncdn.com/159/This-Is-Acting-English-2016-500x500.jpg', preview: '', isFavorite: false, source: 'gaana' },
         { id: 'woman', title: 'Woman', artist: 'Doja Cat', album: 'Planet Her', duration: '2:52', coverUrl: 'https://c.saavncdn.com/831/Planet-Her-English-2021-20210624192617-500x500.jpg', preview: '', isFavorite: false, source: 'gaana' },
@@ -320,7 +320,7 @@ export default function MusicApp({ onBackToLanding }: MusicAppProps) {
     { 
       id: 'desi_hits', 
       name: 'Desi Hits', 
-      image: 'https://images.unsplash.com/photo-1514525253361-903497d3fd33?w=800&auto=format&fit=crop&q=60', 
+      image: 'https://images.unsplash.com/photo-1493225255756-d9584f8606e9?w=800&auto=format&fit=crop&q=60', 
       songs: [
         { id: 'pasoori', title: 'Pasoori', artist: 'Ali Sethi', album: 'Coke Studio', duration: '3:44', coverUrl: 'https://c.saavncdn.com/348/Pasoori-Punjabi-2022-20220203184918-500x500.jpg', preview: '', isFavorite: false, source: 'gaana' },
         { id: 'brown_munde', title: 'Brown Munde', artist: 'AP Dhillon', album: 'Brown Munde', duration: '4:27', coverUrl: 'https://c.saavncdn.com/007/Brown-Munde-Punjabi-2020-20200918070805-500x500.jpg', preview: '', isFavorite: false, source: 'gaana' }
@@ -358,7 +358,12 @@ export default function MusicApp({ onBackToLanding }: MusicAppProps) {
       }}
     >
       <div className="aspect-square bg-[#121212] rounded-lg overflow-hidden mb-4 relative">
-        <img src={song.coverUrl || DEFAULT_COVER} className="w-full h-full object-cover" alt="" />
+        <img 
+          src={song.coverUrl || DEFAULT_COVER} 
+          className="w-full h-full object-cover" 
+          alt="" 
+          onError={(e) => { (e.target as HTMLImageElement).src = DEFAULT_COVER }}
+        />
         <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
           <div className="w-12 h-12 bg-white text-black rounded-full flex items-center justify-center shadow-md">
             <Play className="w-5 h-5 fill-current ml-1" />
@@ -716,7 +721,12 @@ export default function MusicApp({ onBackToLanding }: MusicAppProps) {
                               className={`flex items-center gap-4 p-3 rounded-xl transition-colors duration-200 cursor-pointer group ${s.id === current?.id ? 'bg-white/10' : 'hover:bg-white/5'}`}
                             >
                               <div className="relative w-12 h-12 shrink-0">
-                                <img src={s.coverUrl || DEFAULT_COVER} className="w-full h-full rounded-md object-cover" alt="" />
+                                <img 
+                                  src={s.coverUrl || DEFAULT_COVER} 
+                                  className="w-full h-full rounded-md object-cover" 
+                                  alt="" 
+                                  onError={(e) => { (e.target as HTMLImageElement).src = DEFAULT_COVER }}
+                                />
                                 {s.id === current?.id && isPlaying && (
                                   <div className="absolute inset-0 bg-black/40 flex items-center justify-center rounded-md">
                                     <Volume2 className="w-5 h-5 text-primary fill-current" />
@@ -793,7 +803,12 @@ export default function MusicApp({ onBackToLanding }: MusicAppProps) {
                           className="flex items-center gap-3 bg-white/5 hover:bg-white/10 rounded-lg overflow-hidden border border-white/5 transition-all active:scale-[0.98] cursor-pointer"
                         >
                           <div className="w-14 h-14 shrink-0 flex items-center justify-center">
-                            <img src={p.image} className="w-full h-full object-cover" alt="" />
+                            <img 
+                              src={p.image} 
+                              className="w-full h-full object-cover" 
+                              alt="" 
+                              onError={(e) => { (p.songs.length > 0) ? (e.target as HTMLImageElement).src = p.songs[0].coverUrl : (e.target as HTMLImageElement).src = DEFAULT_COVER }}
+                            />
                           </div>
                           <p className="text-[11px] font-bold text-white line-clamp-2 pr-2 leading-tight">{p.name}</p>
                         </div>
