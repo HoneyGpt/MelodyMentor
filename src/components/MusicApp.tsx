@@ -149,8 +149,22 @@ export default function MusicApp({ onBackToLanding }: MusicAppProps) {
     playTrack(songs[0])
   }
 
-  const playTrack = (song: Song, openFullScreen = true) => {
-    setCurrent(song)
+  const playTrack = async (song: Song, openFullScreen = true) => {
+    let songToPlay = { ...song };
+
+    // Auto-search fallback if preview is missing (for curated/hardcoded songs)
+    if (!songToPlay.preview) {
+      try {
+        const res = await fetch(`/api/songs?search=${encodeURIComponent(song.title + ' ' + song.artist)}`)
+        const data = await res.json()
+        const results = Array.isArray(data) ? data : (data.songs || [])
+        if (results.length > 0) {
+          songToPlay = { ...results[0], id: song.id }; // Keep original ID but use new metadata/preview
+        }
+      } catch (e) { console.error("Auto-fetch failed:", e) }
+    }
+
+    setCurrent(songToPlay)
     setIsPlaying(true)
     if (openFullScreen) setIsFullScreenPlayerOpen(true)
     
@@ -161,18 +175,18 @@ export default function MusicApp({ onBackToLanding }: MusicAppProps) {
         (window as any).hls = null;
       }
 
-      const isHLS = song.preview.includes('.m3u8')
+      const isHLS = songToPlay.preview?.includes('.m3u8')
       
       if (isHLS && Hls.isSupported()) {
         const hls = new Hls();
-        hls.loadSource(song.preview);
+        hls.loadSource(songToPlay.preview);
         hls.attachMedia(audioRef.current);
         hls.on(Hls.Events.MANIFEST_PARSED, () => {
           audioRef.current?.play().catch(err => console.error("Playback failed:", err));
         });
         (window as any).hls = hls;
-      } else {
-        audioRef.current.src = song.preview;
+      } else if (songToPlay.preview) {
+        audioRef.current.src = songToPlay.preview;
         audioRef.current.load();
         audioRef.current.play().catch(err => console.error("Playback failed:", err));
       }
@@ -274,7 +288,7 @@ export default function MusicApp({ onBackToLanding }: MusicAppProps) {
     { 
       id: 'hype_vibe', 
       name: 'Hype your Vibe', 
-      image: 'https://images.unsplash.com/photo-1493225255756-d9584f8606e9?w=800&auto=format&fit=crop&q=60',
+      image: 'https://images.unsplash.com/photo-1514525253361-903497d3fd33?w=800&auto=format&fit=crop&q=60',
       songs: [
         { id: 'unstoppable', title: 'Unstoppable', artist: 'Sia', album: 'This Is Acting', duration: '3:37', coverUrl: 'https://c.saavncdn.com/159/This-Is-Acting-English-2016-500x500.jpg', preview: '', isFavorite: false, source: 'gaana' },
         { id: 'woman', title: 'Woman', artist: 'Doja Cat', album: 'Planet Her', duration: '2:52', coverUrl: 'https://c.saavncdn.com/831/Planet-Her-English-2021-20210624192617-500x500.jpg', preview: '', isFavorite: false, source: 'gaana' },
@@ -284,10 +298,34 @@ export default function MusicApp({ onBackToLanding }: MusicAppProps) {
         { id: '7_rings', title: '7 rings', artist: 'Ariana Grande', album: 'thank u, next', duration: '2:58', coverUrl: 'https://c.saavncdn.com/978/thank-u-next-English-2019-20190207163013-500x500.jpg', preview: '', isFavorite: false, source: 'gaana' }
       ]
     },
-    { id: 'midnight_city', name: 'Midnight City', image: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=800&auto=format&fit=crop&q=60', songs: [] },
-    { id: 'coding_flow', name: 'Coding Flow', image: 'https://images.unsplash.com/photo-1516259762381-22954d7d3ad2?w=800&auto=format&fit=crop&q=60', songs: [] },
-    { id: 'workout_hits', name: 'Power Workout', image: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=800&auto=format&fit=crop&q=60', songs: [] },
-    { id: 'desi_hits', name: 'Desi Hits', image: 'https://images.unsplash.com/photo-1514525253361-903497d3fd33?w=800&auto=format&fit=crop&q=60', songs: [] }
+    { 
+      id: 'midnight_city', 
+      name: 'Midnight City', 
+      image: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=800&auto=format&fit=crop&q=60', 
+      songs: [
+        { id: 'blinding_lights', title: 'Blinding Lights', artist: 'The Weeknd', album: 'After Hours', duration: '3:20', coverUrl: 'https://c.saavncdn.com/743/After-Hours-English-2020-20200320000000-500x500.jpg', preview: '', isFavorite: false, source: 'gaana' },
+        { id: 'starboy', title: 'Starboy', artist: 'The Weeknd', album: 'Starboy', duration: '3:50', coverUrl: 'https://c.saavncdn.com/937/Starboy-English-2016-500x500.jpg', preview: '', isFavorite: false, source: 'gaana' },
+        { id: 'nightcall', title: 'Nightcall', artist: 'Kavinsky', album: 'OutRun', duration: '4:18', coverUrl: 'https://i1.sndcdn.com/artworks-000047321683-16788h-t500x500.jpg', preview: '', isFavorite: false, source: 'gaana' }
+      ]
+    },
+    { 
+      id: 'workout_hits', 
+      name: 'Power Workout', 
+      image: 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=800&auto=format&fit=crop&q=60', 
+      songs: [
+        { id: 'believer', title: 'Believer', artist: 'Imagine Dragons', album: 'Evolve', duration: '3:24', coverUrl: 'https://c.saavncdn.com/624/Evolve-English-2017-500x500.jpg', preview: '', isFavorite: false, source: 'gaana' },
+        { id: 'stronger', title: 'Stronger', artist: 'Kanye West', album: 'Graduation', duration: '5:11', coverUrl: 'https://c.saavncdn.com/839/Graduation-English-2007-500x500.jpg', preview: '', isFavorite: false, source: 'gaana' }
+      ]
+    },
+    { 
+      id: 'desi_hits', 
+      name: 'Desi Hits', 
+      image: 'https://images.unsplash.com/photo-1514525253361-903497d3fd33?w=800&auto=format&fit=crop&q=60', 
+      songs: [
+        { id: 'pasoori', title: 'Pasoori', artist: 'Ali Sethi', album: 'Coke Studio', duration: '3:44', coverUrl: 'https://c.saavncdn.com/348/Pasoori-Punjabi-2022-20220203184918-500x500.jpg', preview: '', isFavorite: false, source: 'gaana' },
+        { id: 'brown_munde', title: 'Brown Munde', artist: 'AP Dhillon', album: 'Brown Munde', duration: '4:27', coverUrl: 'https://c.saavncdn.com/007/Brown-Munde-Punjabi-2020-20200918070805-500x500.jpg', preview: '', isFavorite: false, source: 'gaana' }
+      ]
+    }
   ]
 
   const createPlaylist = () => {
