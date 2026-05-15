@@ -350,15 +350,6 @@ export default function MusicApp({ onBackToLanding }: MusicAppProps) {
         { id: 'pasoori', title: 'Pasoori', artist: 'Ali Sethi', album: 'Coke Studio', duration: '3:44', coverUrl: 'https://c.saavncdn.com/348/Pasoori-Punjabi-2022-20220203184918-500x500.jpg', preview: '', isFavorite: false, source: 'gaana' },
         { id: 'brown_munde', title: 'Brown Munde', artist: 'AP Dhillon', album: 'Brown Munde', duration: '4:27', coverUrl: 'https://c.saavncdn.com/007/Brown-Munde-Punjabi-2020-20200918070805-500x500.jpg', preview: '', isFavorite: false, source: 'gaana' }
       ]
-    },
-    {
-      id: 'yt_gems',
-      name: 'YouTube Gems',
-      image: 'https://images.unsplash.com/photo-1493225255756-d9584f8606e9?w=800&auto=format&fit=crop&q=60',
-      songs: [
-        { id: 'yt_krishna', yt_id: '8vOndYl6o-M', title: 'Krishna Ki Chetvani', artist: 'Spiritual Music', album: 'YouTube Gems', duration: '12:45', coverUrl: 'https://i.ytimg.com/vi/8vOndYl6o-M/maxresdefault.jpg', preview: '', isFavorite: false, source: 'youtube' },
-        { id: 'yt_aatma', yt_id: 'Lp539iH0N2k', title: 'Aatma Rama (Extended)', artist: 'Brodha B', album: 'YouTube Gems', duration: '8:30', coverUrl: 'https://i.ytimg.com/vi/Lp539iH0N2k/maxresdefault.jpg', preview: '', isFavorite: false, source: 'youtube' }
-      ]
     }
   ]
 
