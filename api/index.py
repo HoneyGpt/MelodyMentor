@@ -4,8 +4,13 @@ import sys
 import requests
 from flask_cors import CORS
 
-# Add the current directory to sys.path to allow importing local modules
-sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+# Robustly link the separate provider 'branches' (Standalone Modules)
+ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(os.path.join(ROOT_DIR, 'JioSaavnAPI'))
+sys.path.append(os.path.join(ROOT_DIR, 'GaanaAPI'))
+sys.path.append(os.path.join(ROOT_DIR, 'YouTubeAPI'))
+
+# Standardize Imports from the new Root Modules
 import jiosaavn
 import gaana
 import youtube
@@ -20,15 +25,16 @@ def get_songs():
     if query and query.strip():
         songs = []
         
-        # 1. JioSaavn Search (Primary - Indian)
+        # 1. JioSaavn Search (Master Branch)
         try:
+            # Note: We use the standardized mapping now encapsulated in the module
             jio_results = jiosaavn.search_for_song(query, False, True)
             if isinstance(jio_results, list):
                 songs.extend(jio_results[:15])
         except Exception as e:
             print(f"JioSaavn fetch error: {e}")
 
-        # 2. Gaana Search (Secondary - Indian)
+        # 2. Gaana Search (GaanaAPI Branch)
         try:
             gaana_results = gaana.search_for_song(query, limit=10)
             if gaana_results:
@@ -36,7 +42,7 @@ def get_songs():
         except Exception as e:
             print(f"Gaana fetch error: {e}")
 
-        # 3. YouTube Search (Vast Fallback - Global)
+        # 3. YouTube Search (YouTubeAPI Branch)
         try:
             yt_results = youtube.search_for_song(query, limit=8)
             if yt_results:
@@ -49,7 +55,7 @@ def get_songs():
 
         return jsonify({"songs": songs})
     else:
-        # Default popular songs
+        # Default popular songs fallback
         popular = [
             { "id": 'popular_husn', "title": 'Husn', "artist": 'Anuv Jain', "album": 'Husn', "duration": '3:19', "coverUrl": 'https://c.saavncdn.com/712/Husn-Hindi-2023-20231201053005-500x500.jpg', "preview": 'https://cdns-preview-4.dzcdn.net/stream/c-4e4b1b1c2f0b7a4b5e8c7b8d9e5f5a6-3.mp3', "isFavorite": False, "source": 'popular' },
             { "id": 'popular_seven', "title": 'Seven', "artist": 'Jungkook ft. Latto', "album": 'Seven', "duration": '3:04', "coverUrl": 'https://i.scdn.co/image/ab67616d0000b2738c5c432d73af64860d7d5e3f', "preview": 'https://cdns-preview-5.dzcdn.net/stream/c-5f5c2c2d3g1c8b5c9d8c8e9f0a6b7c7-4.mp3', "isFavorite": False, "source": 'popular' }
@@ -65,41 +71,32 @@ def get_song_info():
     
     if source == 'gaana':
         info = gaana.get_song_info(seokey)
-        if info:
-            return jsonify(info)
+        if info: return jsonify(info)
         return jsonify({"error": "Failed to fetch Gaana info"}), 500
 
     if source == 'youtube':
         info = youtube.get_song_info(seokey)
         if info:
-            # Point the dynamic link straight to our proxy stream engine
             info['preview'] = f"/api/stream?id={seokey}"
             return jsonify(info)
         return jsonify({"error": "Failed to fetch YouTube info"}), 500
             
     return jsonify({"error": "Unsupported source"}), 400
 
-# --- FIXED LIVE YOUTUBE STREAM ENGINE ---
 @app.route('/api/stream')
 def get_stream():
     video_id = request.args.get('id')
-    if not video_id:
-        return "Missing song identity ID", 400
-    
-    # Strip any client-side prefix mutations
-    if video_id.startswith('yt_'):
-        video_id = video_id.replace('yt_', '')
+    if not video_id: return "Missing identity ID", 400
+    if video_id.startswith('yt_'): video_id = video_id.replace('yt_', '')
 
     try:
-        # Call the underlying get_song_info method from your youtube.py module
         song_details = youtube.get_song_info(video_id)
         if not song_details or not song_details.get('preview'):
-            return "Could not resolve streaming audio resource link", 404
+            return "Could not resolve stream", 404
             
         real_stream_url = song_details['preview']
         headers = {'User-Agent': 'Mozilla/5.0'}
-        if 'Range' in request.headers:
-            headers['Range'] = request.headers['Range']
+        if 'Range' in request.headers: headers['Range'] = request.headers['Range']
 
         r = requests.get(real_stream_url, stream=True, headers=headers)
         res = Response(
@@ -107,11 +104,8 @@ def get_stream():
             status=r.status_code,
             content_type=r.headers.get('content-type', 'audio/mpeg')
         )
-        
-        # Pass range metrics downstream to empower tracking and scrubbing
         for h in ['Content-Range', 'Content-Length', 'Accept-Ranges']:
-            if h in r.headers:
-                res.headers[h] = r.headers[h]
+            if h in r.headers: res.headers[h] = r.headers[h]
         res.headers['Access-Control-Allow-Origin'] = '*'
         return res
     except Exception as e:
@@ -120,12 +114,10 @@ def get_stream():
 @app.route('/api/audio-proxy')
 def audio_proxy():
     url = request.args.get('url')
-    if not url:
-        return "No URL provided", 400
+    if not url: return "No URL", 400
     try:
         headers = {'User-Agent': 'Mozilla/5.0'}
-        if 'Range' in request.headers:
-            headers['Range'] = request.headers['Range']
+        if 'Range' in request.headers: headers['Range'] = request.headers['Range']
         r = requests.get(url, stream=True, headers=headers)
         res = app.response_class(
             r.iter_content(chunk_size=1024*64),
@@ -133,8 +125,7 @@ def audio_proxy():
             content_type=r.headers.get('content-type', 'audio/mpeg')
         )
         for h in ['Content-Range', 'Content-Length', 'Accept-Ranges']:
-            if h in r.headers:
-                res.headers[h] = r.headers[h]
+            if h in r.headers: res.headers[h] = r.headers[h]
         res.headers['Access-Control-Allow-Origin'] = '*'
         return res
     except Exception as e:
@@ -153,26 +144,15 @@ def get_modules():
     if data:
         trending_data = data.get('new_trending') or data.get('trending') or data.get('new_albums') or data.get('top_playlists') or []
         for item in trending_data:
-            if not isinstance(item, dict):
-                continue
+            if not isinstance(item, dict): continue
             if item.get('type') == 'song' or 'song' in item:
                 trending.append(jiosaavn.map_jiosaavn_to_song(item))
-            elif item.get('type') in ['album', 'playlist']:
-                continue
     
     if not trending:
         try:
-            fallback_results = jiosaavn.search_for_song('trending', False, True)
-            if isinstance(fallback_results, list) and len(fallback_results) > 0:
-                trending = fallback_results[:15]
-        except:
-            pass
-
-    if not trending:
-        evergreen = [
-            { "id": 'jio_1', "song": 'Husn', "singers": 'Anuv Jain', "album": 'Husn', "duration": '219', "image": 'https://c.saavncdn.com/712/Husn-Hindi-2023-20231201053005-500x500.jpg', "media_url": 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3' }
-        ]
-        trending = [jiosaavn.map_jiosaavn_to_song(t) for t in evergreen]
+            fallback = jiosaavn.search_for_song('trending', False, True)
+            if isinstance(fallback, list): trending = fallback[:15]
+        except: pass
 
     charts = []
     if data and 'charts' in data:
@@ -183,8 +163,7 @@ def get_modules():
                     "title": chart.get('title'),
                     "image": chart.get('image'),
                     "subtitle": chart.get('subtitle'),
-                    "type": chart.get('type'),
-                    "perma_url": chart.get('perma_url')
+                    "type": chart.get('type')
                 })
             
     return jsonify({"trending": trending, "charts": charts})
@@ -192,8 +171,7 @@ def get_modules():
 @app.route('/api/playlist')
 def get_playlist_songs():
     list_id = request.args.get('id')
-    if not list_id:
-        return jsonify({"songs": []})
+    if not list_id: return jsonify({"songs": []})
     data = jiosaavn.get_playlist(list_id, False)
     if data and 'songs' in data:
         songs = [jiosaavn.map_jiosaavn_to_song(t) for t in data['songs']]
