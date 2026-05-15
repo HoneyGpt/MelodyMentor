@@ -164,6 +164,12 @@ const SongCard = ({ song, isFavorite, isCached, currentView, trendingSongs, trac
     <p className="text-[#a7a7a7] text-[10px] font-medium tracking-normal truncate px-1">{song.artist}</p>
     
     <div className="absolute top-6 right-6 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+      <button 
+        onClick={(e) => { e.stopPropagation(); onDownload(song); }}
+        className={`p-2 rounded-full transition-all shadow-lg ${isCached ? 'bg-green-500 text-white' : 'bg-black/60 text-white hover:bg-white hover:text-black'}`}
+      >
+        {isCached ? <CheckCircle2 className="w-3.5 h-3.5" /> : <Download className="w-3.5 h-3.5" />}
+      </button>
       <DropdownMenu.Root>
         <DropdownMenu.Trigger asChild>
           <button onClick={(e) => e.stopPropagation()} className="p-2 bg-black/60 text-white rounded-full hover:bg-white hover:text-black transition-colors shadow-lg">
@@ -217,7 +223,7 @@ export default function MusicApp({ onBackToLanding }: MusicAppProps) {
   const [user, setUser] = useState<SupabaseUser | null>(null)
   
   // --- UI State ---
-  const [currentView, setCurrentView] = useState<'home' | 'search' | 'library' | 'favorites' | 'playlist'>('home')
+  const [currentView, setCurrentView] = useState<'home' | 'search' | 'library' | 'favorites' | 'playlist' | 'downloads'>('home')
   const [selectedPlaylistId, setSelectedPlaylistId] = useState<string | null>(null)
   const [isFullScreenPlayerOpen, setIsFullScreenPlayerOpen] = useState(false)
   const [showPlaylistSelectorModal, setShowPlaylistSelectorModal] = useState(false)
@@ -241,12 +247,18 @@ export default function MusicApp({ onBackToLanding }: MusicAppProps) {
   const [searchingInQueue, setSearchingInQueue] = useState(false)
   const [isOnline, setIsOnline] = useState(navigator.onLine)
   const [cachedTrackIds, setCachedTrackIds] = useState<Set<string>>(new Set())
+  const [downloadedSongs, setDownloadedSongs] = useState<Song[]>([])
   const audioRef = useRef<HTMLAudioElement>(null)
 
   // --- Initialization ---
   useEffect(() => {
     loadTrending()
     
+    // Switch to downloads view if offline on boot
+    if (!navigator.onLine) {
+      setCurrentView('downloads')
+    }
+
     // Auth Listener
     if (supabase) {
       supabase.auth.getSession().then(({ data: { session } }) => {
@@ -259,11 +271,12 @@ export default function MusicApp({ onBackToLanding }: MusicAppProps) {
 
       const savedFavs = localStorage.getItem('melody-mentor-favorites')
       if (savedFavs) {
-        try {
-          setFavorites(JSON.parse(savedFavs))
-        } catch (e) {
-          console.error("Error parsing favorites:", e)
-        }
+        try { setFavorites(JSON.parse(savedFavs)) } catch (e) { console.error("Error parsing favorites:", e) }
+      }
+
+      const savedDownloads = localStorage.getItem('melody-mentor-downloaded-metadata')
+      if (savedDownloads) {
+        try { setDownloadedSongs(JSON.parse(savedDownloads)) } catch (e) { console.error("Error parsing downloads:", e) }
       }
       
       return () => subscription?.unsubscribe()
@@ -461,6 +474,9 @@ export default function MusicApp({ onBackToLanding }: MusicAppProps) {
 
     const success = await cacheTrackAudio(song.id, urlToCache)
     if (success) {
+      const updatedDownloads = [...downloadedSongs, song]
+      setDownloadedSongs(updatedDownloads)
+      localStorage.setItem('melody-mentor-downloaded-metadata', JSON.stringify(updatedDownloads))
       refreshCachedTracks()
     }
   }
@@ -829,6 +845,7 @@ export default function MusicApp({ onBackToLanding }: MusicAppProps) {
           <NavItem icon={Search} label="Search" active={currentView === 'search'} onClick={() => setCurrentView('search')} />
           <NavItem icon={Library} label="Library" active={currentView === 'library'} onClick={() => setCurrentView('library')} />
           <NavItem icon={Heart} label="Favorites" active={currentView === 'favorites'} onClick={() => setCurrentView('favorites')} />
+          <NavItem icon={Download} label="Downloads" active={currentView === 'downloads'} onClick={() => setCurrentView('downloads')} />
         </div>
 
         <div className="flex-1 overflow-y-auto no-scrollbar">
@@ -887,8 +904,9 @@ export default function MusicApp({ onBackToLanding }: MusicAppProps) {
               <Search className="w-5 h-5 text-white/40 group-hover:text-primary transition-colors" />
               <input 
                 type="text" 
-                placeholder="Search songs, albums, artists, podcasts" 
-                className="bg-transparent border-none outline-none text-sm font-medium w-full text-white placeholder:text-white/20"
+                placeholder={isOnline ? "Search songs, albums, artists, podcasts" : "Connect to internet to search new music..."}
+                disabled={!isOnline}
+                className={`bg-transparent border-none outline-none text-sm font-medium w-full text-white ${!isOnline ? 'placeholder:text-primary cursor-not-allowed' : 'placeholder:text-white/20'}`}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
@@ -1367,8 +1385,9 @@ export default function MusicApp({ onBackToLanding }: MusicAppProps) {
                     <Search className="w-6 h-6 text-white/40" />
                     <input 
                       type="text" 
-                      placeholder="Search songs, artists..." 
-                      className="bg-transparent border-none outline-none text-base font-medium w-full text-white placeholder:text-white/20"
+                      placeholder={isOnline ? "Search songs, artists..." : "Offline: Connect to search..."}
+                      disabled={!isOnline}
+                      className={`bg-transparent border-none outline-none text-base font-medium w-full text-white ${!isOnline ? 'placeholder:text-primary' : 'placeholder:text-white/20'}`}
                       value={search}
                       onChange={(e) => setSearch(e.target.value)}
                       onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
@@ -1446,6 +1465,39 @@ export default function MusicApp({ onBackToLanding }: MusicAppProps) {
                           isFavorite={true}
                           isCached={cachedTrackIds.has(s.id)}
                           currentView={currentView} trendingSongs={trendingSongs} tracks={tracks} favorites={favorites}
+                          onPlayTrack={playTrack} onSetQueue={setQueue} onToggleFavorite={toggleFavorite}
+                          onPlayNext={playNextInQueue} onAddToQueue={addToQueue} onSelectPlaylist={(song: any) => { setSelectedSong(song); setShowPlaylistSelectorModal(true); }}
+                          onDownload={handleDownload}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {currentView === 'downloads' && (
+                <div className="space-y-10 pt-4">
+                  <div className="flex items-center justify-between mb-8">
+                    <h3 className="text-3xl font-semibold tracking-tighter">Downloaded Songs</h3>
+                    {downloadedSongs.length > 0 && (
+                      <Button onClick={() => playCollection(downloadedSongs)} className="bg-green-500 text-white hover:bg-green-600 rounded-full px-8 py-4 font-semibold uppercase tracking-normal text-[10px] flex items-center gap-2 transition-colors duration-200">
+                        <Play className="w-4 h-4 fill-current" /> Play Offline
+                      </Button>
+                    )}
+                  </div>
+                  {downloadedSongs.length === 0 ? (
+                    <div className="text-center py-24 bg-white/5 rounded-2xl border border-white/5">
+                      <Download className="w-16 h-16 text-slate-800 mx-auto mb-6" />
+                      <p className="text-slate-500 font-bold">No downloaded songs found. Start downloading for offline play!</p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-8">
+                      {downloadedSongs.map(s => (
+                        <SongCard 
+                          key={s.id} song={s} 
+                          isFavorite={favorites.some(f => f.id === s.id)}
+                          isCached={true}
+                          currentView="downloads" trendingSongs={[]} tracks={[]} favorites={[]}
                           onPlayTrack={playTrack} onSetQueue={setQueue} onToggleFavorite={toggleFavorite}
                           onPlayNext={playNextInQueue} onAddToQueue={addToQueue} onSelectPlaylist={(song: any) => { setSelectedSong(song); setShowPlaylistSelectorModal(true); }}
                           onDownload={handleDownload}
