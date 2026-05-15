@@ -3,6 +3,7 @@ import Navbar from '@/components/landing/Navbar'
 import Hero from '@/components/landing/Hero'
 import Features from '@/components/landing/Features'
 import Footer from '@/components/landing/Footer'
+import { Headphones } from 'lucide-react'
 import MusicApp from '@/components/MusicApp'
 import { motion, AnimatePresence } from 'framer-motion'
 
@@ -24,6 +25,19 @@ export default function App() {
             exit={{ opacity: 0, y: -20 }}
             transition={{ duration: 0.5 }}
           >
+            <div className="bg-[#0f172a] text-white py-3.5 text-center relative z-[60] border-b border-white/5">
+              <div className="container mx-auto px-6 flex items-center justify-center gap-3">
+                <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center shrink-0">
+                  <Headphones className="w-5 h-5 text-white" />
+                </div>
+                <p className="text-sm font-bold tracking-tight">
+                  Experience MelodyMentor on your phone. 
+                  <a href="/base.apk" download className="text-primary hover:text-indigo-400 ml-2 transition-colors inline-flex items-center gap-1.5">
+                    Download mobile app of us <span className="text-lg">→</span>
+                  </a>
+                </p>
+              </div>
+            </div>
             <Navbar onStartListening={() => setShowApp(true)} />
             <Hero onStartListening={() => setShowApp(true)} />
             
