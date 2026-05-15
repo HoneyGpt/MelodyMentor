@@ -79,27 +79,49 @@ def map_jiosaavn_to_song(track):
 def get_songs():
     query = request.args.get('search')
     if query and query.strip():
-        songs = []
+        jio_songs = []
+        gaana_songs = []
+        yt_songs = []
+
         try:
             # JioSaavn Search
             jio_results = jiosaavn.search_for_song(query, False, True)
             if isinstance(jio_results, list):
-                songs.extend([map_jiosaavn_to_song(t) for t in jio_results[:20]])
+                jio_songs = [map_jiosaavn_to_song(t) for t in jio_results[:15]]
         except Exception as e:
             print(f"JioSaavn error: {e}")
 
         try:
-            # GaanaPy Search (Local or configured URL)
+            # GaanaPy Search
             import requests
-            res = requests.get(f"{GAANA_API_URL}/songs/search?query={query}&limit=20", timeout=5)
+            res = requests.get(f"{GAANA_API_URL}/songs/search?query={query}&limit=10", timeout=5)
             if res.status_code == 200:
                 gaana_results = res.json()
                 if isinstance(gaana_results, list):
-                    songs.extend([map_gaana_to_song(t) for t in gaana_results])
+                    gaana_songs = [map_gaana_to_song(t) for t in gaana_results]
         except Exception as e:
             print(f"GaanaPy error: {e}")
 
-        return jsonify({"songs": songs})
+        try:
+            # YouTube Search
+            import requests
+            res = requests.get(f"{YOUTUBE_API_URL}/search?query={query}&limit=10", timeout=8)
+            if res.status_code == 200:
+                yt_results = res.json()
+                if isinstance(yt_results, list):
+                    yt_songs = [map_youtube_to_song(t) for t in yt_results]
+        except Exception as e:
+            print(f"YouTube error: {e}")
+
+        # Interleave results for maximum discovery
+        all_songs = []
+        max_len = max(len(jio_songs), len(gaana_songs), len(yt_songs))
+        for i in range(max_len):
+            if i < len(jio_songs): all_songs.append(jio_songs[i])
+            if i < len(gaana_songs): all_songs.append(gaana_songs[i])
+            if i < len(yt_songs): all_songs.append(yt_songs[i])
+            
+        return jsonify({"songs": all_songs[:40]})
     else:
         # Default popular songs (matching server.ts)
         popular = [
