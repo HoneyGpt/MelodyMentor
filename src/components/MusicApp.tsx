@@ -153,10 +153,10 @@ export default function MusicApp({ onBackToLanding }: MusicAppProps) {
   const playTrack = async (song: Song, openFullScreen = true) => {
     let songToPlay = { ...song };
 
-    // Auto-refresh stream URL for Gaana tracks (they are time-sensitive)
-    if (song.source === 'gaana' && song.seokey) {
+    // Auto-refresh stream URL for Gaana/YouTube tracks (they are time-sensitive)
+    if ((song.source === 'gaana' || song.source === 'youtube') && song.seokey) {
       try {
-        const res = await fetch(`/api/songs/info?seokey=${song.seokey}&source=gaana`)
+        const res = await fetch(`/api/songs/info?seokey=${song.seokey}&source=${song.source}`)
         if (res.ok) {
           const freshData = await res.json()
           if (freshData.preview) {
@@ -164,7 +164,7 @@ export default function MusicApp({ onBackToLanding }: MusicAppProps) {
           }
         }
       } catch (e) { 
-        console.error("Gaana refresh failed, using fallback:", e)
+        console.error(`${song.source} refresh failed, using fallback:`, e)
         // Fallback to title+artist search if seokey info fails
         if (!songToPlay.preview) {
           try {
@@ -392,7 +392,7 @@ export default function MusicApp({ onBackToLanding }: MusicAppProps) {
         </div>
         {/* Source Badge */}
         <div className="absolute top-2 left-2 bg-black/60 backdrop-blur-md text-white/90 text-[8px] font-black w-5 h-5 flex items-center justify-center rounded-full border border-white/10 uppercase">
-          {song.source === 'gaana' ? 'G' : 'J'}
+          {song.source === 'gaana' ? 'G' : song.source === 'youtube' ? 'Y' : 'J'}
         </div>
       </div>
       <h4 className="font-semibold text-white text-sm truncate leading-none mb-2 px-1">{song.title}</h4>

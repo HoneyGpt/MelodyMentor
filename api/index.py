@@ -4,76 +4,20 @@ import sys
 # Add the current directory to sys.path to allow importing local modules
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 import jiosaavn
+import gaana
+import youtube
 import math
+import requests
 from flask_cors import CORS
 
 app = Flask(__name__)
 CORS(app)
 
-def format_duration(duration_seconds):
-    if not duration_seconds:
-        return "0:00"
-    try:
-        total_seconds = int(duration_seconds)
-        minutes = total_seconds // 60
-        seconds = total_seconds % 60
-        return f"{minutes}:{seconds:02d}"
-    except:
-        return "0:00"
+# Helper functions are now handled in provider modules
 
-GAANA_API_URL = os.environ.get('GAANA_API_URL', 'http://127.0.0.1:8000')
+# Provider logic is handled in gaana.py and jiosaavn.py
 
-def map_gaana_to_song(track):
-    images = track.get('images', {}).get('urls', {})
-    image = images.get('large_artwork') or images.get('medium_artwork') or "https://via.placeholder.com/500"
-    
-    streams = track.get('stream_urls', {}).get('urls', {})
-    # Prefer very high quality, then high, then medium
-    media_url = streams.get('very_high_quality') or streams.get('high_quality') or streams.get('medium_quality') or ""
-    
-    return {
-        "id": f"gaana_{track.get('track_id', 'unknown')}",
-        "title": track.get('title', 'Unknown'),
-        "artist": track.get('artists', 'Unknown Artist'),
-        "album": track.get('album', 'Unknown Album'),
-        "duration": format_duration(track.get('duration')),
-        "coverUrl": image,
-        "preview": media_url,
-        "isFavorite": False,
-        "source": "gaana"
-    }
-
-def map_jiosaavn_to_song(track):
-    image = track.get('image') or track.get('image_url') or ""
-    if image and not image.startswith('http'):
-        image = f"https://c.saavncdn.com/{image.lstrip('/')}"
-    if not image:
-        image = "https://via.placeholder.com/500"
-        
-    if isinstance(image, str):
-        image = image.replace('150x150', '500x500').replace('50x50', '500x500')
-    
-    media_url = track.get('media_url') or track.get('url') or track.get('preview_url') or ""
-    if media_url and not media_url.startswith('http'):
-        media_url = f"https://aac.saavncdn.com/{media_url.lstrip('/')}"
-    
-    # Route through proxy if it's a saavncdn link to bypass CORS/Mixed Content
-    if media_url and 'saavncdn.com' in media_url:
-        # Ensure we don't double-proxy if it's already a proxy URL
-        if not media_url.startswith('/api/audio-proxy'):
-            media_url = f"/api/audio-proxy?url={media_url}"
-
-    return {
-        "id": str(track.get('id', 'unknown')),
-        "title": track.get('song') or track.get('title') or 'Unknown',
-        "artist": track.get('singers') or track.get('primary_artists') or 'Unknown Artist',
-        "album": track.get('album') or 'Unknown Album',
-        "duration": format_duration(track.get('duration')),
-        "coverUrl": image,
-        "preview": media_url,
-        "isFavorite": False,
-        "source": "jiosaavn"
-    }
+# Provider logic is handled in gaana.py, jiosaavn.py, and youtube.py
 
 @app.route('/api/songs')
 def get_songs():
@@ -81,23 +25,29 @@ def get_songs():
     if query and query.strip():
         songs = []
         try:
-            # JioSaavn Search
+            # JioSaavn Search (Primary)
             jio_results = jiosaavn.search_for_song(query, False, True)
             if isinstance(jio_results, list):
-                songs.extend([map_jiosaavn_to_song(t) for t in jio_results[:20]])
+                # Results are already mapped in jiosaavn.py
+                songs.extend(jio_results[:15])
         except Exception as e:
             print(f"JioSaavn error: {e}")
 
         try:
-            # GaanaPy Search (Local or configured URL)
-            import requests
-            res = requests.get(f"{GAANA_API_URL}/songs/search?query={query}&limit=20", timeout=5)
-            if res.status_code == 200:
-                gaana_results = res.json()
-                if isinstance(gaana_results, list):
-                    songs.extend([map_gaana_to_song(t) for t in gaana_results])
+            # GaanaPy Search
+            gaana_results = gaana.search_for_song(query, limit=10)
+            if gaana_results:
+                songs.extend(gaana_results)
         except Exception as e:
             print(f"GaanaPy error: {e}")
+
+        try:
+            # YouTube Search (Fallback/Secondary)
+            yt_results = youtube.search_for_song(query, limit=5)
+            if yt_results:
+                songs.extend(yt_results)
+        except Exception as e:
+            print(f"YouTube error: {e}")
 
         return jsonify({"songs": songs})
     else:
@@ -107,6 +57,28 @@ def get_songs():
             { "id": 'popular_seven', "title": 'Seven', "artist": 'Jungkook ft. Latto', "album": 'Seven', "duration": '3:04', "coverUrl": 'https://i.scdn.co/image/ab67616d0000b2738c5c432d73af64860d7d5e3f', "preview": 'https://cdns-preview-5.dzcdn.net/stream/c-5f5c2c2d3g1c8b5c9d8c8e9f0a6b7c7-4.mp3', "isFavorite": False, "source": 'popular' }
         ]
         return jsonify({"songs": popular})
+
+@app.route('/api/songs/info')
+def get_song_info():
+    seokey = request.args.get('seokey')
+    source = request.args.get('source', 'gaana')
+    if not seokey:
+        return jsonify({"error": "No seokey provided"}), 400
+    
+    if source == 'gaana':
+        info = gaana.get_song_info(seokey)
+        if info:
+            return jsonify(info)
+        return jsonify({"error": "Failed to fetch Gaana info"}), 500
+
+    if source == 'youtube':
+        # For YouTube, the seokey passed will be the video_id
+        info = youtube.get_song_info(seokey)
+        if info:
+            return jsonify(info)
+        return jsonify({"error": "Failed to fetch YouTube info"}), 500
+            
+    return jsonify({"error": "Unsupported source"}), 400
 
 @app.route('/api/stream')
 def get_stream():
