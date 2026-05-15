@@ -1,9 +1,11 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, Response
 import os
 import sys
+import requests
 # Add the current directory to sys.path to allow importing local modules
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 import jiosaavn
+import youtube
 import math
 from flask_cors import CORS
 
@@ -75,38 +77,49 @@ def map_jiosaavn_to_song(track):
         "source": "jiosaavn"
     }
 
+@app.route('/api/search')
 @app.route('/api/songs')
 def get_songs():
-    query = request.args.get('search')
-    if query and query.strip():
-        songs = []
-        try:
-            # JioSaavn Search
-            jio_results = jiosaavn.search_for_song(query, False, True)
-            if isinstance(jio_results, list):
-                songs.extend([map_jiosaavn_to_song(t) for t in jio_results[:20]])
-        except Exception as e:
-            print(f"JioSaavn error: {e}")
-
-        try:
-            # GaanaPy Search (Local or configured URL)
-            import requests
-            res = requests.get(f"{GAANA_API_URL}/songs/search?query={query}&limit=20", timeout=5)
-            if res.status_code == 200:
-                gaana_results = res.json()
-                if isinstance(gaana_results, list):
-                    songs.extend([map_gaana_to_song(t) for t in gaana_results])
-        except Exception as e:
-            print(f"GaanaPy error: {e}")
-
-        return jsonify({"songs": songs})
-    else:
-        # Default popular songs (matching server.ts)
+    query = request.args.get('search') or request.args.get('query')
+    if not query or not query.strip():
         popular = [
             { "id": 'popular_husn', "title": 'Husn', "artist": 'Anuv Jain', "album": 'Husn', "duration": '3:19', "coverUrl": 'https://i.scdn.co/image/ab67616d0000b2734c5c432d73af64860d7d5d2e', "preview": 'https://cdns-preview-4.dzcdn.net/stream/c-4e4b1b1c2f0b7a4b5e8c7b8d9e5f5a6-3.mp3', "isFavorite": False, "source": 'popular' },
             { "id": 'popular_seven', "title": 'Seven', "artist": 'Jungkook ft. Latto', "album": 'Seven', "duration": '3:04', "coverUrl": 'https://i.scdn.co/image/ab67616d0000b2738c5c432d73af64860d7d5e3f', "preview": 'https://cdns-preview-5.dzcdn.net/stream/c-5f5c2c2d3g1c8b5c9d8c8e9f0a6b7c7-4.mp3', "isFavorite": False, "source": 'popular' }
         ]
         return jsonify({"songs": popular})
+        
+    songs = []
+    
+    # Layer 1: Execute fast JioSaavn search
+    try:
+        jio_results = jiosaavn.search_for_song(query, False, True)
+        if isinstance(jio_results, list):
+            songs.extend([map_jiosaavn_to_song(t) for t in jio_results[:15]])
+    except Exception as e:
+        print(f"JioSaavn failure: {e}")
+
+    # Layer 2: GaanaPy Search
+    try:
+        res = requests.get(f"{GAANA_API_URL}/songs/search?query={query}&limit=5", timeout=5)
+        if res.status_code == 200:
+            gaana_results = res.json()
+            if isinstance(gaana_results, list):
+                songs.extend([map_gaana_to_song(t) for t in gaana_results])
+    except Exception as e:
+        print(f"GaanaPy error: {e}")
+
+    # Layer 3: Fallback to YouTube ONLY if traditional providers miss, or for vastness
+    # We always add some YouTube results at the bottom to ensure extended versions/remixes are found
+    try:
+        yt_results = youtube.search_for_song(query, limit=10)
+        if yt_results:
+            for track in yt_results:
+                track['preview'] = f"/api/youtube/stream?id={track.get('yt_id')}"
+            songs.extend(yt_results)
+    except Exception as e:
+        print(f"YouTube failure: {e}")
+
+    return jsonify({"songs": songs})
 
 @app.route('/api/stream')
 def get_stream():
@@ -116,6 +129,41 @@ def get_stream():
 @app.route('/api/health')
 def health():
     return jsonify({"status": "ok", "server": "serverless-python"})
+
+@app.route('/api/youtube/stream')
+def stream_youtube_track():
+    video_id = request.args.get('id')
+    if not video_id:
+        return "Missing tracking identification parameter", 400
+        
+    try:
+        # Resolve the raw audio stream target from YouTube
+        song_details = youtube.get_song_info(video_id)
+        if not song_details or not song_details.get('preview'):
+            return "Failed to resolve raw audio stream target", 404
+            
+        real_stream_url = song_details['preview']
+        
+        # Stream chunks to the browser using a header relay configuration
+        headers = {'User-Agent': 'Mozilla/5.0'}
+        if 'Range' in request.headers:
+            headers['Range'] = request.headers['Range']
+            
+        r = requests.get(real_stream_url, stream=True, headers=headers)
+        res = Response(
+            r.iter_content(chunk_size=1024 * 64),
+            status=r.status_code,
+            content_type='audio/mpeg'
+        )
+        # Relay important headers for seeking support
+        for h in ['Content-Range', 'Content-Length', 'Accept-Ranges']:
+            if h in r.headers:
+                res.headers[h] = r.headers[h]
+        
+        res.headers['Access-Control-Allow-Origin'] = '*'
+        return res
+    except Exception as e:
+        return str(e), 500
 
 @app.route('/api/audio-proxy')
 def audio_proxy():
