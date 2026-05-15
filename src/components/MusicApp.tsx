@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { Search, Play, Heart, Music, Pause, Star, ListMusic, Home, LogOut, Loader2, TrendingUp, SkipForward, SkipBack, Plus, Shuffle, Repeat, X, Library, Mic2, Bell, User, Settings, MoreHorizontal, Zap, Volume2, Volume1, VolumeX, ChevronDown, Headphones, Cast, MoreVertical, ChevronRight, ThumbsUp, ThumbsDown, Save, Menu } from 'lucide-react'
+import { Search, Play, Heart, Music, Pause, Star, ListMusic, Home, LogOut, Loader2, TrendingUp, SkipForward, SkipBack, Plus, Shuffle, Repeat, X, Library, Mic2, Bell, User, Settings, MoreHorizontal, Zap, Volume2, Volume1, VolumeX, ChevronDown, Headphones, Cast, MoreVertical, ChevronRight, ThumbsUp, ThumbsDown, Save, Menu, Download, CheckCircle2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import SongFloatingCard from '@/components/SongFloatingCard'
 import { motion, AnimatePresence, Reorder } from 'framer-motion'
@@ -25,6 +25,7 @@ import {CSS} from '@dnd-kit/utilities';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 import { supabase } from '@/lib/supabase'
 import { User as SupabaseUser } from '@supabase/supabase-js'
+import { cacheTrackAudio, isTrackCached, getCachedAudioUrl } from '@/utils/offlineCache'
 
 interface Song {
   id: string
@@ -128,7 +129,7 @@ const SortableQueueItem = ({ song, currentId, isPlaying, onPlay, onRemove }: any
   );
 };
 
-const SongCard = ({ song, isFavorite, currentView, trendingSongs, tracks, favorites, onPlayTrack, onSetQueue, onToggleFavorite, onPlayNext, onAddToQueue, onSelectPlaylist }: any) => (
+const SongCard = ({ song, isFavorite, isCached, currentView, trendingSongs, tracks, favorites, onPlayTrack, onSetQueue, onToggleFavorite, onPlayNext, onAddToQueue, onSelectPlaylist, onDownload }: any) => (
   <div 
     className="group bg-[#181818] p-4 rounded-xl border border-white/5 hover:bg-[#242424] transition-colors duration-200 cursor-pointer relative shadow-md"
     onClick={() => {
@@ -153,6 +154,11 @@ const SongCard = ({ song, isFavorite, currentView, trendingSongs, tracks, favori
       <div className="absolute top-2 left-2 bg-black/60 backdrop-blur-md text-white/90 text-[8px] font-black w-5 h-5 flex items-center justify-center rounded-full border border-white/10 uppercase">
         {song.source === 'gaana' ? 'G' : 'J'}
       </div>
+      {isCached && (
+        <div className="absolute bottom-2 right-2 bg-primary text-white p-1 rounded-full shadow-lg">
+          <CheckCircle2 className="w-3 h-3" />
+        </div>
+      )}
     </div>
     <h4 className="font-semibold text-white text-sm truncate leading-none mb-2 px-1">{song.title}</h4>
     <p className="text-[#a7a7a7] text-[10px] font-medium tracking-normal truncate px-1">{song.artist}</p>
@@ -178,6 +184,13 @@ const SongCard = ({ song, isFavorite, currentView, trendingSongs, tracks, favori
             </DropdownMenu.Item>
             <DropdownMenu.Item onClick={() => onSelectPlaylist(song)} className="flex items-center gap-3 px-3 py-2.5 text-[11px] font-bold text-white/80 hover:text-white hover:bg-white/5 rounded-lg cursor-pointer outline-none transition-colors uppercase tracking-widest">
               <ListMusic className="w-4 h-4" /> Add to Playlist
+            </DropdownMenu.Item>
+            <DropdownMenu.Item 
+              onClick={() => onDownload(song)} 
+              disabled={isCached}
+              className="flex items-center gap-3 px-3 py-2.5 text-[11px] font-bold text-white/80 hover:text-white hover:bg-white/5 rounded-lg cursor-pointer outline-none transition-colors uppercase tracking-widest disabled:opacity-50 disabled:cursor-default"
+            >
+              {isCached ? <CheckCircle2 className="w-4 h-4 text-primary" /> : <Download className="w-4 h-4" />} {isCached ? 'Downloaded' : 'Download'}
             </DropdownMenu.Item>
             <DropdownMenu.Separator className="h-[1px] bg-white/5 my-1" />
             <DropdownMenu.Item onClick={() => onToggleFavorite(song)} className="flex items-center gap-3 px-3 py-2.5 text-[11px] font-bold text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 rounded-lg cursor-pointer outline-none transition-colors uppercase tracking-widest">
@@ -226,6 +239,8 @@ export default function MusicApp({ onBackToLanding }: MusicAppProps) {
   const [queueSearchQuery, setQueueSearchQuery] = useState('')
   const [queueSearchResults, setQueueSearchResults] = useState<Song[]>([])
   const [searchingInQueue, setSearchingInQueue] = useState(false)
+  const [isOnline, setIsOnline] = useState(navigator.onLine)
+  const [cachedTrackIds, setCachedTrackIds] = useState<Set<string>>(new Set())
   const audioRef = useRef<HTMLAudioElement>(null)
 
   // --- Initialization ---
@@ -255,6 +270,32 @@ export default function MusicApp({ onBackToLanding }: MusicAppProps) {
     }
   }, [])
 
+  useEffect(() => {
+    const handleOnline = () => setIsOnline(true)
+    const handleOffline = () => setIsOnline(false)
+    window.addEventListener('online', handleOnline)
+    window.addEventListener('offline', handleOffline)
+    return () => {
+      window.removeEventListener('online', handleOnline)
+      window.removeEventListener('offline', handleOffline)
+    }
+  }, [])
+
+  const refreshCachedTracks = async () => {
+    try {
+      const cache = await caches.open('melodymentor-audio-cache')
+      const keys = await cache.keys()
+      const ids = new Set(keys.map(k => k.url.split('/').pop() || ''))
+      setCachedTrackIds(ids)
+    } catch (e) {
+      console.error("Cache refresh failed:", e)
+    }
+  }
+
+  useEffect(() => {
+    refreshCachedTracks()
+  }, [])
+
   // Sync Playlists when user changes
   useEffect(() => {
     fetchPlaylists()
@@ -263,6 +304,11 @@ export default function MusicApp({ onBackToLanding }: MusicAppProps) {
   useEffect(() => {
     localStorage.setItem('melody-mentor-favorites', JSON.stringify(favorites))
   }, [favorites])
+
+  const getVisibleSongs = (songList: Song[]) => {
+    if (isOnline) return songList;
+    return songList.filter(s => cachedTrackIds.has(s.id));
+  };
 
   const fetchPlaylists = async () => {
     if (user && supabase) {
@@ -402,6 +448,23 @@ export default function MusicApp({ onBackToLanding }: MusicAppProps) {
     playTrack(songs[0])
   }
 
+  const handleDownload = async (song: Song) => {
+    if (cachedTrackIds.has(song.id)) return
+    
+    // If it's a Gaana track, we might need a fresh preview URL before caching
+    let urlToCache = song.preview
+    if (song.source === 'gaana' && song.seokey && !urlToCache) {
+      const res = await fetch(`/api/songs/info?seokey=${song.seokey}&source=gaana`)
+      const data = await res.json()
+      urlToCache = data.preview
+    }
+
+    const success = await cacheTrackAudio(song.id, urlToCache)
+    if (success) {
+      refreshCachedTracks()
+    }
+  }
+
   const playTrack = async (song: Song, openFullScreen = true) => {
     let songToPlay = { ...song };
 
@@ -459,20 +522,27 @@ export default function MusicApp({ onBackToLanding }: MusicAppProps) {
         (window as any).hls = null;
       }
 
-      const isHLS = songToPlay.preview?.includes('.m3u8')
+      // Check for cached version first
+      const cachedUrl = await getCachedAudioUrl(songToPlay.id);
       
-      if (isHLS && Hls.isSupported()) {
-        const hls = new Hls();
-        hls.loadSource(songToPlay.preview);
-        hls.attachMedia(audioRef.current);
-        hls.on(Hls.Events.MANIFEST_PARSED, () => {
-          audioRef.current?.play().catch(err => console.error("Playback failed:", err));
-        });
-        (window as any).hls = hls;
+      if (cachedUrl) {
+        audioRef.current.src = cachedUrl;
+        audioRef.current.play().catch(err => console.error("Cached playback failed:", err));
       } else if (songToPlay.preview) {
-        audioRef.current.src = songToPlay.preview;
-        audioRef.current.load();
-        audioRef.current.play().catch(err => console.error("Playback failed:", err));
+        const isHLS = songToPlay.preview.includes('.m3u8');
+        
+        if (isHLS && Hls.isSupported()) {
+          const hls = new Hls();
+          hls.loadSource(songToPlay.preview);
+          hls.attachMedia(audioRef.current);
+          hls.on(Hls.Events.MANIFEST_PARSED, () => {
+            audioRef.current?.play().catch(err => console.error("Playback failed:", err));
+          });
+          (window as any).hls = hls;
+        } else {
+          audioRef.current.src = songToPlay.preview;
+          audioRef.current.play().catch(err => console.error("Normal playback failed:", err));
+        }
       }
     }
   }
@@ -805,6 +875,11 @@ export default function MusicApp({ onBackToLanding }: MusicAppProps) {
 
       {/* Main Content Area */}
       <main className={`flex-1 relative flex flex-col pb-20 md:pb-0 min-w-0 ${isFullScreenPlayerOpen ? 'bg-black' : 'bg-black'}`}>
+        {!isOnline && (
+          <div className="bg-primary/20 border-b border-primary/30 px-4 py-3 flex items-center justify-center gap-3 text-[11px] font-bold uppercase tracking-widest text-primary animate-pulse z-50">
+            <Zap className="w-4 h-4 fill-current" /> You are offline. Playing downloaded tracks.
+          </div>
+        )}
         {/* Top Header (YouTube Music Style) */}
         <header className="h-16 md:h-20 flex items-center justify-between px-4 md:px-10 shrink-0 z-40 bg-inherit border-b border-white/5">
           <div className="flex items-center gap-10 flex-1">
@@ -1267,13 +1342,15 @@ export default function MusicApp({ onBackToLanding }: MusicAppProps) {
                       </div>
                     ) : (
                       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-8">
-                        {trendingSongs.map(s => (
+                        {getVisibleSongs(trendingSongs).map(s => (
                           <SongCard 
                             key={s.id} song={s} 
                             isFavorite={favorites.some(f => f.id === s.id)}
+                            isCached={cachedTrackIds.has(s.id)}
                             currentView={currentView} trendingSongs={trendingSongs} tracks={tracks} favorites={favorites}
                             onPlayTrack={playTrack} onSetQueue={setQueue} onToggleFavorite={toggleFavorite}
                             onPlayNext={playNextInQueue} onAddToQueue={addToQueue} onSelectPlaylist={(song: any) => { setSelectedSong(song); setShowPlaylistSelectorModal(true); }}
+                            onDownload={handleDownload}
                           />
                         ))}
                       </div>
@@ -1306,13 +1383,15 @@ export default function MusicApp({ onBackToLanding }: MusicAppProps) {
                     <div className="flex items-center justify-center py-20"><Loader2 className="w-12 h-12 animate-spin text-primary" /></div>
                   ) : (
                     <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-8">
-                      {tracks.map(s => (
+                      {getVisibleSongs(tracks).map(s => (
                         <SongCard 
                           key={s.id} song={s} 
                           isFavorite={favorites.some(f => f.id === s.id)}
+                          isCached={cachedTrackIds.has(s.id)}
                           currentView={currentView} trendingSongs={trendingSongs} tracks={tracks} favorites={favorites}
                           onPlayTrack={playTrack} onSetQueue={setQueue} onToggleFavorite={toggleFavorite}
                           onPlayNext={playNextInQueue} onAddToQueue={addToQueue} onSelectPlaylist={(song: any) => { setSelectedSong(song); setShowPlaylistSelectorModal(true); }}
+                          onDownload={handleDownload}
                         />
                       ))}
                     </div>
@@ -1361,13 +1440,15 @@ export default function MusicApp({ onBackToLanding }: MusicAppProps) {
                     </div>
                   ) : (
                     <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-8">
-                      {favorites.map(s => (
+                      {getVisibleSongs(favorites).map(s => (
                         <SongCard 
                           key={s.id} song={s} 
                           isFavorite={true}
+                          isCached={cachedTrackIds.has(s.id)}
                           currentView={currentView} trendingSongs={trendingSongs} tracks={tracks} favorites={favorites}
                           onPlayTrack={playTrack} onSetQueue={setQueue} onToggleFavorite={toggleFavorite}
                           onPlayNext={playNextInQueue} onAddToQueue={addToQueue} onSelectPlaylist={(song: any) => { setSelectedSong(song); setShowPlaylistSelectorModal(true); }}
+                          onDownload={handleDownload}
                         />
                       ))}
                     </div>
@@ -1399,7 +1480,7 @@ export default function MusicApp({ onBackToLanding }: MusicAppProps) {
                     </div>
                   </div>
                   <div className="space-y-4">
-                    {playlists.find(p => p.id === selectedPlaylistId)?.songs.map((s, i) => (
+                    {getVisibleSongs(playlists.find(p => p.id === selectedPlaylistId)?.songs || []).map((s, i) => (
                       <div key={s.id} onClick={() => playTrack(s)} className="flex items-center gap-4 md:gap-6 p-3 md:p-4 rounded-[1.5rem] hover:bg-white/5 transition-colors duration-200 cursor-pointer group">
                         <span className="w-6 text-base font-semibold text-slate-700 group-hover:text-primary transition-colors text-center hidden md:block">{i + 1}</span>
                         <img src={s.coverUrl || DEFAULT_COVER} className="w-16 h-16 md:w-14 md:h-14 rounded-xl object-cover shadow-lg" alt="" />
@@ -1407,8 +1488,26 @@ export default function MusicApp({ onBackToLanding }: MusicAppProps) {
                           <h4 className="font-semibold text-white text-base md:text-base truncate leading-tight mb-1">{s.title}</h4>
                           <p className="text-sm md:text-[10px] font-bold text-slate-500 uppercase tracking-normal truncate">{s.artist}</p>
                         </div>
-                        <span className="text-xs font-semibold text-slate-700 tabular-nums hidden md:block w-12 text-right">{s.duration}</span>
-                        <button className="text-slate-600 hover:text-white p-2"><MoreHorizontal className="w-6 h-6" /></button>
+                        <div className="flex items-center gap-2">
+                          {cachedTrackIds.has(s.id) && <CheckCircle2 className="w-4 h-4 text-primary" />}
+                          <DropdownMenu.Root>
+                            <DropdownMenu.Trigger asChild>
+                              <button onClick={(e) => e.stopPropagation()} className="p-2 text-white/40 hover:text-white transition-colors">
+                                <MoreHorizontal className="w-5 h-5" />
+                              </button>
+                            </DropdownMenu.Trigger>
+                            <DropdownMenu.Portal>
+                              <DropdownMenu.Content className="z-[200] min-w-[160px] bg-[#181818] border border-white/10 rounded-xl p-2 shadow-2xl">
+                                <DropdownMenu.Item onClick={() => handleDownload(s)} disabled={cachedTrackIds.has(s.id)} className="flex items-center gap-3 px-3 py-2.5 text-[11px] font-bold text-white/80 hover:text-white hover:bg-white/5 rounded-lg cursor-pointer outline-none transition-colors uppercase tracking-widest disabled:opacity-50">
+                                  {cachedTrackIds.has(s.id) ? <CheckCircle2 className="w-4 h-4 text-primary" /> : <Download className="w-4 h-4" />} {cachedTrackIds.has(s.id) ? 'Downloaded' : 'Download'}
+                                </DropdownMenu.Item>
+                                <DropdownMenu.Item onClick={() => toggleFavorite(s)} className="flex items-center gap-3 px-3 py-2.5 text-[11px] font-bold text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 rounded-lg cursor-pointer outline-none transition-colors uppercase tracking-widest">
+                                  <Heart className={`w-4 h-4 ${favorites.some(f => f.id === s.id) ? 'fill-current' : ''}`} /> {favorites.some(f => f.id === s.id) ? 'Loved' : 'Love'}
+                                </DropdownMenu.Item>
+                              </DropdownMenu.Content>
+                            </DropdownMenu.Portal>
+                          </DropdownMenu.Root>
+                        </div>
                       </div>
                     ))}
                   </div>
