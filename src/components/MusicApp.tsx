@@ -265,7 +265,7 @@ export default function MusicApp({ onBackToLanding }: MusicAppProps) {
   }, [favorites])
 
   const fetchPlaylists = async () => {
-    if (user) {
+    if (user && supabase) {
       const { data, error } = await supabase
         .from('user_playlists')
         .select('*')
@@ -500,7 +500,7 @@ export default function MusicApp({ onBackToLanding }: MusicAppProps) {
 
     const updatedSongs = [...playlist.songs, song]
 
-    if (user) {
+    if (user && supabase) {
       const { error } = await supabase
         .from('user_playlists')
         .update({ songs: updatedSongs })
@@ -559,7 +559,7 @@ export default function MusicApp({ onBackToLanding }: MusicAppProps) {
     if (queue.length === 0) return
     const name = prompt("Enter playlist name:", `Queue ${new Date().toLocaleDateString()}`)
     if (name) {
-      if (user) {
+      if (user && supabase) {
         const { data, error } = await supabase
           .from('user_playlists')
           .insert({
@@ -679,7 +679,7 @@ export default function MusicApp({ onBackToLanding }: MusicAppProps) {
   const createPlaylist = async () => {
     if (!newPlaylistName.trim()) return
 
-    if (user) {
+    if (user && supabase) {
       const { data, error } = await supabase
         .from('user_playlists')
         .insert({
