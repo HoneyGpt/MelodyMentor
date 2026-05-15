@@ -993,6 +993,14 @@ export default function MusicApp({ onBackToLanding }: MusicAppProps) {
                         >
                           {showQueueSearch ? 'Close Search' : 'Add to Queue'}
                         </button>
+                        <button 
+                          onClick={(e) => { e.stopPropagation(); current && handleDownload(current); }} 
+                          disabled={current ? cachedTrackIds.has(current.id) : true}
+                          className={`px-5 py-2 rounded-full text-[11px] font-semibold uppercase tracking-normal flex items-center gap-2 hover:scale-105 active:scale-95 transition-colors duration-200 shadow-lg ${current && cachedTrackIds.has(current.id) ? 'bg-green-500 text-white' : 'bg-white/10 text-white border border-white/10 hover:bg-white/20'}`}
+                        >
+                          {current && cachedTrackIds.has(current.id) ? <CheckCircle2 className="w-4 h-4" /> : <Download className="w-4 h-4" />}
+                          {current && cachedTrackIds.has(current.id) ? 'Downloaded' : 'Download'}
+                        </button>
                         <button onClick={(e) => { e.stopPropagation(); setShowPlaylistSelectorModal(true); }} className="px-5 py-2 bg-white text-black rounded-full text-[11px] font-semibold uppercase tracking-normal flex items-center gap-2 hover:scale-105 active:scale-95 transition-colors duration-200">
                           <Plus className="w-4 h-4" /> Save
                         </button>
@@ -1071,7 +1079,25 @@ export default function MusicApp({ onBackToLanding }: MusicAppProps) {
                       <Headphones className="w-4 h-4 text-white" />
                       <span className="text-[10px] font-semibold tracking-normal text-white uppercase">Audio Only</span>
                     </div>
-                    <button className="text-white/70 p-2"><MoreVertical className="w-6 h-6" /></button>
+                    <DropdownMenu.Root>
+                      <DropdownMenu.Trigger asChild>
+                        <button className="text-white/70 p-2"><MoreVertical className="w-6 h-6" /></button>
+                      </DropdownMenu.Trigger>
+                      <DropdownMenu.Portal>
+                        <DropdownMenu.Content className="z-[250] min-w-[180px] bg-[#181818] border border-white/10 rounded-xl p-2 shadow-2xl animate-in fade-in zoom-in-95 duration-200" sideOffset={5}>
+                          <DropdownMenu.Item 
+                            onClick={() => current && handleDownload(current)} 
+                            disabled={current ? cachedTrackIds.has(current.id) : true}
+                            className="flex items-center gap-3 px-3 py-2.5 text-[11px] font-bold text-white/80 hover:text-white hover:bg-white/5 rounded-lg cursor-pointer outline-none transition-colors uppercase tracking-widest disabled:opacity-50"
+                          >
+                            {current && cachedTrackIds.has(current.id) ? <CheckCircle2 className="w-4 h-4 text-primary" /> : <Download className="w-4 h-4" />} {current && cachedTrackIds.has(current.id) ? 'Downloaded' : 'Download'}
+                          </DropdownMenu.Item>
+                          <DropdownMenu.Item onClick={() => current && toggleFavorite(current)} className="flex items-center gap-3 px-3 py-2.5 text-[11px] font-bold text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 rounded-lg cursor-pointer outline-none transition-colors uppercase tracking-widest">
+                            <Heart className={`w-4 h-4 ${current && favorites.some(f => f.id === current.id) ? 'fill-current' : ''}`} /> {current && favorites.some(f => f.id === current.id) ? 'Loved' : 'Love'}
+                          </DropdownMenu.Item>
+                        </DropdownMenu.Content>
+                      </DropdownMenu.Portal>
+                    </DropdownMenu.Root>
                   </div>
 
                   {/* Flexible Content Wrapper */}
@@ -1425,6 +1451,14 @@ export default function MusicApp({ onBackToLanding }: MusicAppProps) {
                     <Button onClick={() => setShowCreateModal(true)} className="bg-primary/10 text-primary hover:bg-primary/20 rounded-full px-6 py-2 text-[10px] font-semibold uppercase tracking-normal border border-primary/20">New Playlist</Button>
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                    {/* Downloads Card */}
+                    <div onClick={() => setCurrentView('downloads')} className="bg-gradient-to-br from-green-600 to-green-800 p-10 rounded-2xl shadow-md cursor-pointer hover:scale-105 transition-transform group relative overflow-hidden">
+                      <div className="absolute -right-4 -bottom-4 opacity-10 group-hover:scale-125 transition-transform"><Download className="w-32 h-32" /></div>
+                      <Download className="w-12 h-12 text-white/50 mb-8" />
+                      <h4 className="text-2xl font-semibold text-white mb-2">Downloaded</h4>
+                      <p className="text-white/60 text-xs font-semibold uppercase tracking-normal">{downloadedSongs.length} Tracks</p>
+                    </div>
+
                     {/* Create New Card (Mobile Friendly) */}
                     <div onClick={() => setShowCreateModal(true)} className="md:hidden bg-white/5 border-2 border-dashed border-white/10 p-8 rounded-2xl flex flex-col items-center justify-center gap-4 text-slate-500 hover:text-white hover:border-primary/40 transition-colors duration-200">
                       <Plus className="w-12 h-12" />
