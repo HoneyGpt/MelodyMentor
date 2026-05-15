@@ -23,6 +23,8 @@ import {
 } from '@dnd-kit/sortable';
 import {CSS} from '@dnd-kit/utilities';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
+import { supabase } from '@/lib/supabase'
+import { User as SupabaseUser } from '@supabase/supabase-js'
 
 interface Song {
   id: string
@@ -199,6 +201,7 @@ export default function MusicApp({ onBackToLanding }: MusicAppProps) {
   const [favorites, setFavorites] = useState<Song[]>([])
   const [playlists, setPlaylists] = useState<Playlist[]>([])
   const [queue, setQueue] = useState<Song[]>([])
+  const [user, setUser] = useState<SupabaseUser | null>(null)
   
   // --- UI State ---
   const [currentView, setCurrentView] = useState<'home' | 'search' | 'library' | 'favorites' | 'playlist'>('home')
@@ -228,19 +231,59 @@ export default function MusicApp({ onBackToLanding }: MusicAppProps) {
   // --- Initialization ---
   useEffect(() => {
     loadTrending()
+    
+    // Auth Listener
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUser(session?.user ?? null)
+    })
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null)
+    })
+
     const savedFavs = localStorage.getItem('melody-mentor-favorites')
     if (savedFavs) setFavorites(JSON.parse(savedFavs))
-    const savedPlaylists = localStorage.getItem('melody-mentor-playlists')
-    if (savedPlaylists) setPlaylists(JSON.parse(savedPlaylists))
+    
+    return () => subscription.unsubscribe()
   }, [])
+
+  // Sync Playlists when user changes
+  useEffect(() => {
+    fetchPlaylists()
+  }, [user])
 
   useEffect(() => {
     localStorage.setItem('melody-mentor-favorites', JSON.stringify(favorites))
   }, [favorites])
 
+  const fetchPlaylists = async () => {
+    if (user) {
+      const { data, error } = await supabase
+        .from('user_playlists')
+        .select('*')
+        .eq('user_id', user.id)
+      
+      if (error) {
+        console.error('Error fetching playlists:', error)
+      } else if (data) {
+        setPlaylists(data.map((p: any) => ({
+          id: p.id,
+          name: p.playlist_name,
+          songs: p.songs
+        })))
+      }
+    } else {
+      const savedPlaylists = localStorage.getItem('melody-mentor-playlists')
+      if (savedPlaylists) setPlaylists(JSON.parse(savedPlaylists))
+      else setPlaylists([])
+    }
+  }
+
   useEffect(() => {
-    localStorage.setItem('melody-mentor-playlists', JSON.stringify(playlists))
-  }, [playlists])
+    if (!user) {
+      localStorage.setItem('melody-mentor-playlists', JSON.stringify(playlists))
+    }
+  }, [playlists, user])
 
   useEffect(() => {
     if ('mediaSession' in navigator && current) {
@@ -413,10 +456,44 @@ export default function MusicApp({ onBackToLanding }: MusicAppProps) {
     }
   }
 
-  const addToPlaylist = (song: Song, playlistId: string) => {
+  const handleGoogleLogin = async () => {
+    await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: 'https://mentozy.app'
+      }
+    })
+  }
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut()
+    setUser(null)
+  }
+
+  const addToPlaylist = async (song: Song, playlistId: string) => {
+    const playlist = playlists.find(p => p.id === playlistId)
+    if (!playlist) return
+
+    if (playlist.songs.find(s => s.id === song.id)) return
+
+    const updatedSongs = [...playlist.songs, song]
+
+    if (user) {
+      const { error } = await supabase
+        .from('user_playlists')
+        .update({ songs: updatedSongs })
+        .eq('id', playlistId)
+        .eq('user_id', user.id)
+
+      if (error) {
+        console.error('Error adding to playlist:', error)
+        return
+      }
+    }
+
     setPlaylists(playlists.map(p => {
-      if (p.id === playlistId && !p.songs.find(s => s.id === song.id)) {
-        return { ...p, songs: [...p.songs, song] }
+      if (p.id === playlistId) {
+        return { ...p, songs: updatedSongs }
       }
       return p
     }))
@@ -456,17 +533,36 @@ export default function MusicApp({ onBackToLanding }: MusicAppProps) {
     }
   }
 
-  const saveQueueAsPlaylist = () => {
+  const saveQueueAsPlaylist = async () => {
     if (queue.length === 0) return
     const name = prompt("Enter playlist name:", `Queue ${new Date().toLocaleDateString()}`)
     if (name) {
-      const newPlaylist: Playlist = {
-        id: `playlist_${Date.now()}`,
-        name: name,
-        songs: [...queue],
-        type: 'queue'
+      if (user) {
+        const { data, error } = await supabase
+          .from('user_playlists')
+          .insert({
+            user_id: user.id,
+            playlist_name: name,
+            songs: [...queue]
+          })
+          .select()
+          .single()
+
+        if (error) {
+          console.error('Error saving queue:', error)
+          return
+        } else if (data) {
+          setPlaylists(prev => [...prev, { id: data.id, name: data.playlist_name, songs: data.songs, type: 'queue' }])
+        }
+      } else {
+        const newPlaylist: Playlist = {
+          id: `playlist_${Date.now()}`,
+          name: name,
+          songs: [...queue],
+          type: 'queue'
+        }
+        setPlaylists(prev => [...prev, newPlaylist])
       }
-      setPlaylists(prev => [...prev, newPlaylist])
       alert(`Queue saved as "${name}"!`)
     }
   }
@@ -558,10 +654,30 @@ export default function MusicApp({ onBackToLanding }: MusicAppProps) {
     }
   ]
 
-  const createPlaylist = () => {
+  const createPlaylist = async () => {
     if (!newPlaylistName.trim()) return
-    const newPlaylist = { id: Date.now().toString(), name: newPlaylistName, songs: [] }
-    setPlaylists([...playlists, newPlaylist])
+
+    if (user) {
+      const { data, error } = await supabase
+        .from('user_playlists')
+        .insert({
+          user_id: user.id,
+          playlist_name: newPlaylistName,
+          songs: []
+        })
+        .select()
+        .single()
+
+      if (error) {
+        console.error('Error creating playlist:', error)
+      } else if (data) {
+        setPlaylists([...playlists, { id: data.id, name: data.playlist_name, songs: data.songs }])
+      }
+    } else {
+      const newPlaylist = { id: Date.now().toString(), name: newPlaylistName, songs: [] }
+      setPlaylists([...playlists, newPlaylist])
+    }
+    
     setNewPlaylistName('')
     setShowCreateModal(false)
   }
@@ -671,11 +787,38 @@ export default function MusicApp({ onBackToLanding }: MusicAppProps) {
           </div>
           <div className="flex items-center gap-6">
             <button className="text-white/40 hover:text-white transition-colors"><Cast className="w-6 h-6" /></button>
-            <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-gradient-to-tr from-primary to-indigo-400 p-[2px]">
-              <div className="w-full h-full rounded-full bg-slate-900 flex items-center justify-center overflow-hidden">
-                <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Harsh" alt="Profile" className="w-full h-full object-cover" />
-              </div>
-            </div>
+            
+            {user ? (
+              <DropdownMenu.Root>
+                <DropdownMenu.Trigger asChild>
+                  <button className="flex items-center gap-3 focus:outline-none">
+                    <div className="hidden md:flex flex-col items-end">
+                      <span className="text-xs font-bold text-white leading-none">{user.user_metadata.full_name || user.email}</span>
+                      <span className="text-[10px] font-medium text-white/40">Premium Account</span>
+                    </div>
+                    <div className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-gradient-to-tr from-primary to-indigo-400 p-[2px]">
+                      <div className="w-full h-full rounded-full bg-slate-900 flex items-center justify-center overflow-hidden">
+                        <img src={user.user_metadata.avatar_url} alt="Profile" className="w-full h-full object-cover" />
+                      </div>
+                    </div>
+                  </button>
+                </DropdownMenu.Trigger>
+                <DropdownMenu.Portal>
+                  <DropdownMenu.Content className="z-[200] min-w-[160px] bg-[#181818] border border-white/10 rounded-xl p-2 shadow-2xl animate-in fade-in zoom-in-95 duration-200" sideOffset={5}>
+                    <DropdownMenu.Item onClick={handleLogout} className="flex items-center gap-3 px-3 py-2.5 text-[11px] font-bold text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 rounded-lg cursor-pointer outline-none transition-colors uppercase tracking-widest">
+                      <LogOut className="w-4 h-4" /> Sign Out
+                    </DropdownMenu.Item>
+                  </DropdownMenu.Content>
+                </DropdownMenu.Portal>
+              </DropdownMenu.Root>
+            ) : (
+              <button 
+                onClick={handleGoogleLogin}
+                className="flex items-center gap-2 bg-white text-black px-4 py-2 rounded-full text-[11px] font-black uppercase tracking-wider hover:bg-primary hover:text-white transition-all duration-300"
+              >
+                <Zap className="w-4 h-4 fill-current" /> Login
+              </button>
+            )}
           </div>
         </header>
 
