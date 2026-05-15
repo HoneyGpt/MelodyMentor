@@ -6,9 +6,15 @@ from flask_cors import CORS
 
 # Robustly link the separate provider 'branches' (Standalone Modules)
 ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-sys.path.append(os.path.join(ROOT_DIR, 'JioSaavnAPI'))
-sys.path.append(os.path.join(ROOT_DIR, 'GaanaAPI'))
-sys.path.append(os.path.join(ROOT_DIR, 'YouTubeAPI'))
+print(f"DEBUG: Root Directory detected as: {ROOT_DIR}")
+
+for provider in ['JioSaavnAPI', 'GaanaAPI', 'YouTubeAPI']:
+    path = os.path.join(ROOT_DIR, provider)
+    if os.path.exists(path):
+        sys.path.append(path)
+        print(f"DEBUG: Linked {provider} branch at: {path}")
+    else:
+        print(f"DEBUG: WARNING - {provider} branch NOT FOUND at: {path}")
 
 # Standardize Imports from the new Root Modules
 import jiosaavn
