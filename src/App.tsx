@@ -6,6 +6,7 @@ import Footer from '@/components/landing/Footer'
 import { Headphones } from 'lucide-react'
 import MusicApp from '@/components/MusicApp'
 import { motion, AnimatePresence } from 'framer-motion'
+import { supabase } from '@/lib/supabase'
 
 export default function App() {
   const [showApp, setShowApp] = useState(false)
@@ -13,6 +14,15 @@ export default function App() {
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }, [showApp])
+
+  useEffect(() => {
+    // Check session on mount to skip landing for signed-in users
+    if (supabase) {
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        if (session) setShowApp(true)
+      })
+    }
+  }, [])
 
   return (
     <main className="min-h-screen bg-white selection:bg-primary/20 overflow-x-hidden">
