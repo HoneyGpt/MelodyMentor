@@ -473,6 +473,10 @@ export default function MusicApp({ onBackToLanding }: MusicAppProps) {
   }
 
   const handleGoogleLogin = async () => {
+    if (!supabase) {
+      alert("Supabase connection not initialized. Check your environment variables.");
+      return;
+    }
     await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
@@ -482,7 +486,9 @@ export default function MusicApp({ onBackToLanding }: MusicAppProps) {
   }
 
   const handleLogout = async () => {
-    await supabase.auth.signOut()
+    if (supabase) {
+      await supabase.auth.signOut()
+    }
     setUser(null)
   }
 
